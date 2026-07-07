@@ -31,8 +31,8 @@ export async function GET(request: NextRequest) {
       data: {
         date: now.toISOString().split('T')[0],
         weekday,
-        courses: courses.map((c: { id: string; name: string; teacher: string | null; location: string | null; weekday: number; start_period: number; end_period: number; week_range: string | null }) => ({
-          course_id: c.id,
+        courses: courses.map((c: { course_id: string; name: string; teacher: string | null; location: string | null; weekday: number; start_period: number; end_period: number; week_range: string | null }) => ({
+          course_id: c.course_id,
           name: c.name,
           teacher: c.teacher,
           location: c.location,

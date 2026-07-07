@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         code: 0,
         data: {
-          course_id: c.id,
+          course_id: c.course_id,
           name: c.name,
           teacher: c.teacher,
           location: c.location,
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
           code: 0,
           data: {
-            course_id: c.id,
+            course_id: c.course_id,
             name: c.name,
             teacher: c.teacher,
             location: c.location,
