@@ -34,3 +34,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# prisma
+prisma/migrations/
+prisma/*.db
+
+# docker
+docker-compose.override.yml
+
+# logs
+*.log

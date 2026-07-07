@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id @default(cuid())
+  name       String?
+  school     String?
+  major      String?
+  grade      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  courses      Course[]
+  deadlines    Deadline[]
+  plans        Plan[]
+  dialogSessions DialogSession[]
+}
+
+model Course {
+  id           String   @id @default(cuid())
+  name         String
+  teacher      String?
+  location     String?
+  weekday      Int
+  startPeriod  Int
+  endPeriod    Int
+  weekRange    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deadlines    Deadline[]
+
+  @@index([userId])
+}
+
+model Deadline {
+  id            String   @id @default(cuid())
+  type          String
+  subject       String
+  courseId      String?
+  deadlineTime  DateTime
+  weight        Int
+  status        String   @default("pending")
+  description   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course        Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  plan          Plan?
+
+  @@index([userId])
+  @@index([deadlineTime])
+}
+
+model Plan {
+  id              String   @id @default(cuid())
+  ddlId           String
+  dailyHoursLimit Int      @default(4)
+  outlineImage    String?
+  selfAssessment  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deadline        Deadline @relation(fields: [ddlId], references: [id], onDelete: Cascade)
+  dailyTasks      DailyTask[]
+
+  @@index([userId])
+  @@index([ddlId])
+}
+
+model DailyTask {
+  id          String   @id @default(cuid())
+  planId      String
+  date        DateTime
+  content     String
+  duration    Int
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  plan        Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId])
+  @@index([date])
+}
+
+model DialogSession {
+  id         String   @id @default(cuid())
+  userId     String
+  status     String   @default("active")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages   DialogMessage[]
+
+  @@index([userId])
+}
+
+model DialogMessage {
+  id          String   @id @default(cuid())
+  sessionId   String
+  role        String
+  content     String
+  intent      String?
+  actions     String?
+  createdAt   DateTime @default(now())
+
+  session     DialogSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([createdAt])
+}
