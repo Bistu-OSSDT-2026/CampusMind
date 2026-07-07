@@ -5,7 +5,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: '校园学业规划助手 - GuardGPA',
+  title: '校园学业规划助手 - CampusMind',
   description: '一款帮助大学生制定学期学习计划、追踪课程进度的轻量工具',
 }
 
