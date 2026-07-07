@@ -86,11 +86,11 @@ model DailyTask {
   task_id          String    @id @default(cuid())
   plan_id          String
   task_date        DateTime
-  knowledge_points String    @db.JsonB
+  knowledge_points Json      @db.JsonB
   time_slot        String?   @db.VarChar(20)
   duration_minutes Int       @db.SmallInt
   status           String    @db.VarChar(20) @default("pending")
-  weak_points      String?   @db.JsonB
+  weak_points      Json?     @db.JsonB
   created_at       DateTime  @default(now())
 
   plan             Plan      @relation(fields: [plan_id], references: [plan_id], onDelete: Cascade)
@@ -120,7 +120,7 @@ model DialogMessage {
   role          String         @db.VarChar(20)
   content       String
   intent        String?        @db.VarChar(50)
-  actions       String?        @db.JsonB
+  actions       Json?          @db.JsonB
   created_at    DateTime       @default(now())
 
   session       DialogSession  @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
