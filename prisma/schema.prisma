@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  user_id            String     @id @default(cuid())
+  phone              String?    @unique
+  nickname           String?
+  school             String?
+  major              String?
+  grade              String?
+  daily_hours_limit  Int        @default(4)
+  created_at         DateTime   @default(now())
+  updated_at         DateTime   @updatedAt
+
+  courses           Course[]
+  deadlines         Deadline[]
+  plans             Plan[]
+  dialog_sessions   DialogSession[]
+  dialog_messages   DialogMessage[]
+
+  @@map("users")
+}
+
+model Course {
+  course_id      String    @id @default(cuid())
+  user_id        String
+  name           String
+  teacher        String?
+  location       String?
+  weekday        Int       @db.SmallInt
+  start_period   Int       @db.SmallInt
+  end_period     Int       @db.SmallInt
+  week_range     String?
+  created_at     DateTime  @default(now())
+
+  user           User      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  deadlines      Deadline[]
+
+  @@map("courses")
+}
+
+model Deadline {
+  ddl_id         String    @id @default(cuid())
+  user_id        String
+  course_id      String?
+  type           String    @db.VarChar(20)
+  subject        String
+  deadline_time  DateTime
+  weight         Int       @db.SmallInt @default(1)
+  status         String    @db.VarChar(20) @default("pending")
+  description    String?
+  created_at     DateTime  @default(now())
+
+  user           User      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  course         Course?   @relation(fields: [course_id], references: [course_id])
+  plans          Plan[]
+
+  @@map("deadlines")
+}
+
+model Plan {
+  plan_id            String       @id @default(cuid())
+  user_id            String
+  ddl_id             String
+  subject            String
+  exam_date          DateTime
+  status             String       @db.VarChar(20) @default("draft")
+  daily_hours_limit  Int          @default(4)
+  generated_at       DateTime     @default(now())
+  updated_at         DateTime     @updatedAt
+
+  user               User         @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  deadline           Deadline     @relation(fields: [ddl_id], references: [ddl_id], onDelete: Cascade)
+  daily_tasks        DailyTask[]
+
+  @@map("plans")
+}
+
+model DailyTask {
+  task_id          String    @id @default(cuid())
+  plan_id          String
+  task_date        Date
+  knowledge_points String    @db.JsonB
+  time_slot        String?   @db.VarChar(20)
+  duration_minutes Int       @db.SmallInt
+  status           String    @db.VarChar(20) @default("pending")
+  weak_points      String?   @db.JsonB
+  created_at       DateTime  @default(now())
+
+  plan             Plan      @relation(fields: [plan_id], references: [plan_id], onDelete: Cascade)
+
+  @@map("daily_tasks")
+}
+
+model DialogSession {
+  session_id      String          @id @default(cuid())
+  user_id         String
+  status          String          @db.VarChar(20) @default("active")
+  current_intent  String?         @db.VarChar(50)
+  last_active_at  DateTime        @default(now())
+  expires_at      DateTime
+  created_at      DateTime        @default(now())
+
+  user            User            @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  messages        DialogMessage[]
+
+  @@map("dialog_sessions")
+}
+
+model DialogMessage {
+  message_id    String         @id @default(cuid())
+  session_id    String
+  user_id       String
+  role          String         @db.VarChar(20)
+  content       String
+  intent        String?        @db.VarChar(50)
+  actions       String?        @db.JsonB
+  created_at    DateTime       @default(now())
+
+  session       DialogSession  @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
+  user          User           @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@map("dialog_messages")
+}
