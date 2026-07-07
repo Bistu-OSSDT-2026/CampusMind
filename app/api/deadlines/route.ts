@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const responseData = {
       code: 0,
       message: 'success',
-      data: deadlines.map((d) => ({
+      data: deadlines.map((d: { ddl_id: string; type: string; subject: string; course_id: string | null; deadline_time: Date; weight: number; status: string; description: string | null; created_at: Date }) => ({
         ddl_id: d.ddl_id,
         type: d.type,
         subject: d.subject,
