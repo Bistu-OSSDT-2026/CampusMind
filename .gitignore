@@ -10,3 +10,20 @@ dist/
 
 .DS_Store
 Thumbs.db
+
+commit_msg.txt
+
+*.swp
+*.swo
+*~
+
+*.cache
+.cache/
+
+prisma/migrations/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+*.local
