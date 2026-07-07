@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         role: m.role,
         content: m.content,
         intent: m.intent,
-        actions: m.actions ? JSON.parse(m.actions) : null,
+        actions: m.actions || null,
         created_at: m.created_at.toISOString(),
       })),
     }

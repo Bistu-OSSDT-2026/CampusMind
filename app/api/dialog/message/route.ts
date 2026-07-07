@@ -255,7 +255,7 @@ export async function POST(request: NextRequest) {
         role: 'assistant',
         content: reply,
         intent,
-        actions: actions ? JSON.stringify(actions) : null,
+        actions: actions || undefined,
       },
     })
 
