@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       {
         code: 0,
         data: {
-          course_id: course.id,
+          course_id: course.course_id,
           name: course.name,
           teacher: course.teacher,
           location: course.location,
@@ -108,8 +108,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       code: 0,
       data: {
-        courses: courses.map((c: { id: string; name: string; teacher: string | null; location: string | null; weekday: number; start_period: number; end_period: number; week_range: string | null; user_id: string }) => ({
-          course_id: c.id,
+        courses: courses.map((c: { course_id: string; name: string; teacher: string | null; location: string | null; weekday: number; start_period: number; end_period: number; week_range: string | null; user_id: string }) => ({
+          course_id: c.course_id,
           name: c.name,
           teacher: c.teacher,
           location: c.location,
