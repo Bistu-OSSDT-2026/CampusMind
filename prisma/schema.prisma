@@ -85,7 +85,7 @@ model Plan {
 model DailyTask {
   task_id          String    @id @default(cuid())
   plan_id          String
-  task_date        Date
+  task_date        DateTime
   knowledge_points String    @db.JsonB
   time_slot        String?   @db.VarChar(20)
   duration_minutes Int       @db.SmallInt
