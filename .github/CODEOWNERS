@@ -1,0 +1,30 @@
+# CODEOWNERS - 按模块指定代码审查责任人
+
+# 后端或接口开发
+app/api/ @Bistu-OSSDT-2026
+lib/prisma.ts @Bistu-OSSDT-2026
+
+# 前端页面开发
+components/ @Bistu-OSSDT-2026
+app/page.tsx @Bistu-OSSDT-2026
+lib/api.ts @Bistu-OSSDT-2026
+
+# 核心功能开发
+lib/intent.ts @Bistu-OSSDT-2026
+lib/orchestrator.ts @Bistu-OSSDT-2026
+lib/llm.ts @Bistu-OSSDT-2026
+
+# 数据处理
+prisma/ @Bistu-OSSDT-2026
+
+# CI与自动化检查
+.github/workflows/ @Bistu-OSSDT-2026
+
+# 项目文档
+README.md @Bistu-OSSDT-2026
+CONTRIBUTING.md @Bistu-OSSDT-2026
+
+# 根目录配置文件
+docker-compose.yml @Bistu-OSSDT-2026
+.env.example @Bistu-OSSDT-2026
+LICENSE @Bistu-OSSDT-2026
