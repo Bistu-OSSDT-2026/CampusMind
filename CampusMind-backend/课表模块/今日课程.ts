@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       data: {
         date: now.toISOString().split('T')[0],
         weekday,
-        courses: courses.map((c) => ({
+        courses: courses.map((c: any) => ({
           course_id: c.id,
           name: c.name,
           teacher: c.teacher,

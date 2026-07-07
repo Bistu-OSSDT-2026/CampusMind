@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       code: 0,
       data: {
-        courses: courses.map((c) => ({
+        courses: courses.map((c: any) => ({
           course_id: c.id,
           name: c.name,
           teacher: c.teacher,
