@@ -2,26 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { redis, getSessionKey } from '@/lib/redis'
 import { logger } from '@/lib/logger'
-
-function detectIntent(message: string): string {
-  const lowerMsg = message.toLowerCase()
-  if (lowerMsg.includes('下节课') || lowerMsg.includes('上课') || lowerMsg.includes('课表')) {
-    return 'course_query'
-  }
-  if (lowerMsg.includes('考') || lowerMsg.includes('作业') || lowerMsg.includes('ddl') || lowerMsg.includes('截止') || lowerMsg.includes('死线')) {
-    return 'deadline_create'
-  }
-  if (lowerMsg.includes('复习') || lowerMsg.includes('计划') || lowerMsg.includes('快炸')) {
-    return 'plan_generate'
-  }
-  if (lowerMsg.includes('今天') || lowerMsg.includes('近期') || lowerMsg.includes('这周')) {
-    return 'aggregated_query'
-  }
-  if (lowerMsg.includes('食堂') || lowerMsg.includes('天气') || lowerMsg.includes('吃') || lowerMsg.includes('玩') || lowerMsg.includes('聊天') || lowerMsg.includes('你好') || lowerMsg.includes('嗨')) {
-    return 'boundary'
-  }
-  return 'course_query'
-}
+import { detectIntent } from '@/lib/intent'
 
 async function getMockCourses(userId: string) {
   try {
