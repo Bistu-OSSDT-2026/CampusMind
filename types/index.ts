@@ -9,7 +9,7 @@ export interface Message {
 
 export interface ToolAction {
   tool: 'course' | 'deadline' | 'plan' | 'checkin' | 'review'
-  action: 'query' | 'create' | 'update' | 'delete'
+  action: 'query' | 'create' | 'update' | 'delete' | 'start' | 'generate'
   result: string
 }
 

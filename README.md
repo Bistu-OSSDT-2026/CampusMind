@@ -26,13 +26,30 @@
 
 ## 快速开始
 
-### 环境要求
+### 方法一：Docker一键启动（推荐）
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/Bistu-OSSDT-2026/CampusMind
+cd CampusMind
+
+# 2. 启动所有服务（数据库 + Redis + 应用）
+docker-compose up
+
+# 3. 访问应用
+# 前端: http://localhost:3000
+# Prisma Studio: http://localhost:5555
+```
+
+### 方法二：本地开发
+
+#### 环境要求
 
 - Node.js >= 20
 - npm >= 10
-- Docker Desktop
+- Docker Desktop（用于数据库）
 
-### 安装步骤
+#### 安装步骤
 
 ```bash
 # 1. 克隆仓库
@@ -43,20 +60,23 @@ cd CampusMind
 npm install
 
 # 3. 启动数据库
-docker-compose up -d
+docker-compose up -d postgres redis
 
 # 4. 配置环境变量
 cp .env.example .env
-# 编辑 .env，填写 OPENAI_API_KEY
+# 编辑 .env，填写 OPENAI_API_KEY（可选）
 
 # 5. 数据库迁移
 npx prisma migrate dev
 
-# 6. 运行开发服务器
+# 6. 预置Mock数据（可选）
+npx prisma db seed
+
+# 7. 运行开发服务器
 npm run dev
 ```
 
-### 访问地址
+#### 访问地址
 
 - 前端: http://localhost:3000
 - Prisma Studio: http://localhost:5555
@@ -68,11 +88,10 @@ npm run dev
 ```
 CampusMind/
 ├── app/                    # Next.js 应用目录
-│   ├── api/               # API 路由
-│   │   ├── courses/       # 课表模块
-│   │   ├── deadlines/     # 死线模块
-│   │   ├── dialog/        # 对话模块
-│   │   └── plans/         # 计划模块
+│   ├── courses/            # 课表模块 API
+│   ├── deadlines/          # 死线模块 API
+│   ├── dialog/             # 对话模块 API
+│   ├── plans/             # 计划模块 API
 │   ├── components/        # 前端组件
 │   ├── globals.css        # 全局样式
 │   ├── layout.tsx         # 布局组件
@@ -83,19 +102,47 @@ CampusMind/
 │   ├── intent.ts          # 意图识别
 │   ├── orchestrator.ts    # 工具编排引擎
 │   ├── llm.ts            # LLM 服务
-│   └── api.ts            # 前端 API 客户端
+│   ├── api.ts            # 前端 API 客户端
+│   └── logger.ts         # 日志工具
 ├── prisma/                # Prisma 配置
-│   └── schema.prisma      # 数据模型
+│   ├── schema.prisma      # 数据模型
+│   └── seed.ts           # Mock数据预置
 ├── types/                 # TypeScript 类型定义
 ├── .github/               # GitHub 配置
 │   ├── workflows/         # CI 工作流
 │   ├── ISSUE_TEMPLATE/    # Issue 模板
 │   ├── PULL_REQUEST_TEMPLATE.md
 │   └── CODEOWNERS
-├── docker-compose.yml     # Docker 配置
+├── docker-compose.yml     # Docker 配置（一键启动）
+├── Dockerfile             # Docker 应用镜像
 ├── .env.example          # 环境变量模板
 ├── CONTRIBUTING.md       # 贡献指南
 └── TASKS.md              # 开发任务清单
+```
+
+---
+
+## 核心场景测试
+
+| 用例 | 用户输入 | 预期结果 |
+|------|---------|---------|
+| TC-01 | "下节课是什么" | 返回下节课信息 |
+| TC-02 | "周五考高数" | 创建死线提醒 |
+| TC-03 | "周五考高数，帮我生成复习计划" | 编排执行并生成计划 |
+| TC-04 | "今天食堂有啥" | 礼貌拒绝并引导 |
+| TC-05 | "帮我生成计划" | 追问必要参数 |
+
+---
+
+## 环境变量
+
+```bash
+# .env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/guardgpa?schema=public"
+REDIS_URL="redis://localhost:6379"
+OPENAI_API_KEY="your-openai-api-key"      # 可选，不填则使用Mock数据
+NEXT_PUBLIC_USER_ID="test-user-1"
+NODE_ENV="development"
 ```
 
 ---
@@ -133,15 +180,6 @@ feature/d1-2-course-module (开发分支)
 | `test` | 测试代码 |
 | `chore` | 构建/CI |
 
-### 详细流程
-
-1. **创建 Issue**: 使用 `.github/ISSUE_TEMPLATE/task.md` 创建任务卡片
-2. **创建分支**: 从 `main` 创建 `feature/任务编号-功能名` 分支
-3. **开发**: 完成任务，按规范提交代码
-4. **创建 PR**: 使用 `.github/PULL_REQUEST_TEMPLATE.md` 创建 Pull Request
-5. **代码审查**: Reviewer 审查并提出改进建议
-6. **合并**: 通过审查后，Squash and Merge 到 `main`
-
 ---
 
 ## 分工说明
@@ -157,18 +195,6 @@ feature/d1-2-course-module (开发分支)
 | CI与自动化检查 | CI配置、代码检查 |
 | 项目文档 | README、CONTRIBUTING |
 | 版本发布 | 版本管理、发布流程 |
-
----
-
-## 核心场景测试
-
-| 用例 | 用户输入 | 预期结果 |
-|------|---------|---------|
-| TC-01 | "下节课是什么" | 返回下节课信息 |
-| TC-02 | "周五考高数" | 创建死线提醒 |
-| TC-03 | "周五考高数，帮我生成复习计划" | 编排执行并生成计划 |
-| TC-04 | "今天食堂有啥" | 礼貌拒绝并引导 |
-| TC-05 | "帮我生成计划" | 追问必要参数 |
 
 ---
 
