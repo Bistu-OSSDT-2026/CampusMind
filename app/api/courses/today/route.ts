@@ -1,30 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/logger'
+import { mockCourses, getTodayWeekday } from '@/lib/mock-data'
 
-const mockCourses = [
-  {
-    course_id: 'course-1',
-    name: '高等数学',
-    teacher: '张教授',
-    location: '教学楼A101',
-    weekday: 1,
-    start_period: 1,
-    end_period: 2,
-    week_range: '1-16',
-    created_at: '2026-07-01T08:00:00Z',
-  },
-  {
-    course_id: 'course-2',
-    name: '大学物理',
-    teacher: '李教授',
-    location: '物理系楼B203',
-    weekday: 1,
-    start_period: 3,
-    end_period: 4,
-    week_range: '1-16',
-    created_at: '2026-07-01T08:00:00Z',
-  },
-]
+const PERIOD_TIMES: Record<number, { start: string; end: string }> = {
+  1: { start: '08:00', end: '09:35' },
+  2: { start: '09:50', end: '11:25' },
+  3: { start: '11:40', end: '13:15' },
+  4: { start: '13:30', end: '15:05' },
+  5: { start: '15:20', end: '16:55' },
+  6: { start: '17:10', end: '18:45' },
+  7: { start: '19:00', end: '20:35' },
+  8: { start: '20:50', end: '22:25' },
+}
 
 export async function GET(request: NextRequest) {
   const userId = request.headers.get('X-User-Id')
@@ -37,11 +24,26 @@ export async function GET(request: NextRequest) {
   }
 
   const today = new Date()
-  const weekday = today.getDay() === 0 ? 7 : today.getDay()
+  const weekday = getTodayWeekday()
 
   logger.api.processing('查询今日课程', { today: today.toISOString(), weekday })
 
-  const todayCourses = mockCourses.filter((course) => course.weekday === weekday)
+  const todayCourses = mockCourses.filter(c => c.weekday === weekday).map(c => {
+    const start = PERIOD_TIMES[c.start_period]
+    const end = PERIOD_TIMES[c.end_period]
+    return {
+      course_id: c.id,
+      name: c.name,
+      teacher: c.teacher,
+      location: c.location,
+      weekday: c.weekday,
+      start_period: c.start_period,
+      end_period: c.end_period,
+      week_range: c.week_range,
+      created_at: c.created_at,
+      time: start && end ? `${start.start}-${end.end}` : `${c.start_period * 2 - 1}:00-${c.end_period * 2}:00`,
+    }
+  })
 
   const responseData = {
     code: 0,
