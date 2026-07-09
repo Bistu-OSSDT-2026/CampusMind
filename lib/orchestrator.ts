@@ -2,6 +2,7 @@ import { IntentType } from './intent'
 import { extractDeadlineInfo } from './intent'
 import { prisma } from './prisma'
 import { generateReviewPlan, type LLMPlanResult, type DailyTaskLLM } from './llm'
+import { generateBoundaryReply } from './boundary'
 import type { ToolAction, OrchestrationResult, Deadline } from '@/types'
 
 const periodStartTimes = [
@@ -367,16 +368,14 @@ export async function execute(intent: IntentType, message: string, userId: strin
 
       actions.push({ tool: 'deadline', action: 'query', result: '查询最紧迫死线' })
 
-      if (urgent) {
-        return {
-          reply: `我只管帮你防挂科～\n\n对了，你${urgent.subject}，现在还剩${urgent.countdown_days}天。`,
-          intent,
-          actions,
-          urgent_deadline: urgent,
-        }
-      }
+      const { reply, category } = generateBoundaryReply(message, urgent)
 
-      return { reply: '我只管帮你防挂科～\n\n当前没有紧迫的考试或作业，好好休息吧！', intent, actions }
+      return {
+        reply,
+        intent,
+        actions: [...actions, { tool: 'deadline', action: 'query', result: `边界处理[${category}]` }],
+        urgent_deadline: urgent,
+      }
     }
 
     default: {
