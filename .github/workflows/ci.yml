@@ -26,5 +26,8 @@ jobs:
       - name: TypeScript type check
         run: npx tsc --noEmit
 
+      - name: ESLint check
+        run: npm run lint
+
       - name: Build project
         run: npm run build
