@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { redis, getSessionKey } from '@/lib/redis'
+import { getRedis, getSessionKey } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
@@ -111,7 +111,7 @@ export async function DELETE(request: NextRequest) {
       data: { status: 'ended' },
     })
 
-    await redis.del(getSessionKey(sessionToEnd.session_id))
+    await getRedis().del(getSessionKey(sessionToEnd.session_id))
 
     const responseData = {
       code: 0,

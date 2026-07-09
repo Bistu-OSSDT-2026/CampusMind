@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { redis, getSessionKey } from '@/lib/redis'
+import { getRedis, getSessionKey } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 import { detectIntent } from '@/lib/intent'
 import { execute } from '@/lib/orchestrator'
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       })
       sessionId = newSession.session_id
 
-      await redis.set(getSessionKey(sessionId), JSON.stringify({
+      await getRedis().set(getSessionKey(sessionId), JSON.stringify({
         user_id: userId,
         session_id: sessionId,
         expires_at: expiresAt.toISOString(),
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
         where: { session_id: sessionId },
         data: { last_active_at: new Date() },
       })
-      await redis.expire(getSessionKey(sessionId), 24 * 60 * 60)
+      await getRedis().expire(getSessionKey(sessionId), 24 * 60 * 60)
     }
 
     // 使用意图识别 + 编排引擎
