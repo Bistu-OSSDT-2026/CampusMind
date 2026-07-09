@@ -2,7 +2,11 @@ import { IntentType } from '@/types'
 
 export type { IntentType }
 
-// 关键词匹配规则：按优先级排列，先匹配到的优先返回
+/**
+ * 意图识别规则配置
+ * 规则按优先级排列：先匹配到的意图优先返回
+ * 每条规则包含意图类型和对应的关键词列表
+ */
 const intentRules: { intent: IntentType; keywords: string[] }[] = [
   {
     intent: 'plan_generate',
@@ -31,17 +35,11 @@ const intentRules: { intent: IntentType; keywords: string[] }[] = [
   {
     intent: 'boundary',
     keywords: [
-      // 生活类
       '食堂', '天气', '吃什么', '去哪玩', '外卖', '快递', '超市', '宿舍', '洗衣', '洗澡',
-      // 闲聊类
       '聊天', '你好', '嗨', '在吗', '你是谁', '功能', '帮助', '哈哈', '呵呵', '嘿嘿',
-      // 情感类
       '心情', '难过', '开心', '无聊', '好累', '好烦', '焦虑', '压力', '想哭', '崩溃', 'emo',
-      // 娱乐类
       '游戏', '追剧', '电影', '综艺', '音乐', '唱歌', '逛街', '旅游', '刷视频', '看剧',
-      // 社交类
       '恋爱', '对象', '表白', '朋友', '聚会', '社团', '约会',
-      // 其他非学业
       '笑话', '故事', '算命', '星座', '占卜', '运势', '塔罗', 'MBTI',
     ],
   },
@@ -49,6 +47,13 @@ const intentRules: { intent: IntentType; keywords: string[] }[] = [
 
 /**
  * 通过关键词匹配识别用户意图
+ * 
+ * 匹配逻辑：
+ * 1. 将用户输入转换为小写
+ * 2. 按优先级遍历意图规则
+ * 3. 检查是否包含规则中的任意关键词
+ * 4. 返回第一个匹配的意图，无匹配时默认返回课程查询意图
+ * 
  * @param message 用户输入消息
  * @returns 意图类型枚举值
  */
@@ -61,12 +66,14 @@ export function detectIntent(message: string): IntentType {
     }
   }
 
-  // 默认返回课程查询意图
   return 'course_query'
 }
 
 /**
- * 获取所有意图规则（供编排引擎和边界处理使用）
+ * 获取所有意图规则
+ * 供编排引擎和边界处理模块使用
+ * 
+ * @returns 意图规则列表
  */
 export function getIntentRules() {
   return intentRules
@@ -74,6 +81,15 @@ export function getIntentRules() {
 
 /**
  * 从用户消息中提取死线相关信息
+ * 
+ * 提取策略：
+ * 1. 天数格式："3天后" → 提取天数
+ * 2. 日期格式："12月25日" → 提取日期
+ * 3. 星期格式："周五"、"明天" → 计算天数偏移
+ * 4. 科目关键词匹配：从预设课程列表中匹配科目名称
+ * 
+ * @param message 用户输入消息
+ * @returns 包含科目、天数、日期的对象，未提取到的字段为undefined
  */
 export function extractDeadlineInfo(message: string): { subject?: string; days?: number; date?: string } {
   const result: { subject?: string; days?: number; date?: string } = {}

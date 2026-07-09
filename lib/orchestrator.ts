@@ -5,6 +5,10 @@ import { generateReviewPlan, type LLMPlanResult, type DailyTaskLLM } from './llm
 import { generateBoundaryReply } from './boundary'
 import type { ToolAction, OrchestrationResult, Deadline } from '@/types'
 
+/**
+ * 课程时段起始时间配置
+ * 定义每个课程节次对应的开始时间（小时:分钟）
+ */
 const periodStartTimes = [
   { period: 1, hour: 8, minute: 0 },
   { period: 2, hour: 8, minute: 55 },
@@ -20,8 +24,19 @@ const periodStartTimes = [
   { period: 12, hour: 19, minute: 25 },
 ]
 
+/**
+ * 星期标签映射
+ * 索引0为空，索引1-7对应周一到周日
+ */
 const weekdayLabels = ['', '周一', '周二', '周三', '周四', '周五', '周六', '周日']
 
+/**
+ * 将课程节次转换为可读时间字符串
+ * 
+ * @param startPeriod 开始节次
+ * @param endPeriod 结束节次
+ * @returns 格式化的时间字符串，如 "08:00-09:50"
+ */
 function formatCourseTime(startPeriod: number, endPeriod: number): string {
   const start = periodStartTimes.find(p => p.period === startPeriod)
   const end = periodStartTimes.find(p => p.period === endPeriod + 1)
@@ -31,8 +46,20 @@ function formatCourseTime(startPeriod: number, endPeriod: number): string {
   return `${startPeriod * 2 - 1}:00-${endPeriod * 2}:00`
 }
 
-// --- Tool A: 课程查询 ---
+// --- Tool A: 课程查询模块 ---
 
+/**
+ * 查询用户今日课程列表
+ * 
+ * 逻辑：
+ * 1. 获取当前日期和星期（周日为7）
+ * 2. 查询数据库中该用户当天的课程
+ * 3. 按开始节次升序排列
+ * 4. 数据库不可用时返回Mock数据
+ * 
+ * @param userId 用户ID
+ * @returns 课程列表
+ */
 async function getTodayCourses(userId: string) {
   try {
     const today = new Date()
@@ -50,6 +77,18 @@ async function getTodayCourses(userId: string) {
   }
 }
 
+/**
+ * 查询用户下一节课
+ * 
+ * 逻辑：
+ * 1. 获取当前日期、星期和时间
+ * 2. 查询当天所有课程
+ * 3. 遍历课程，找到第一个尚未开始的课程
+ * 4. 数据库不可用时返回Mock数据
+ * 
+ * @param userId 用户ID
+ * @returns 下一节课信息，无则返回null
+ */
 async function getNextCourse(userId: string) {
   try {
     const today = new Date()
@@ -82,6 +121,18 @@ async function getNextCourse(userId: string) {
   }
 }
 
+/**
+ * 查询用户可用复习时段
+ * 
+ * 逻辑：
+ * 1. 获取用户所有课程
+ * 2. 计算已占用的时段（星期-节次）
+ * 3. 遍历周一到周五的所有时段，排除已占用时段
+ * 4. 返回可用时段列表，包含格式化的时间标签
+ * 
+ * @param userId 用户ID
+ * @returns 可用时段列表
+ */
 async function getAvailableSlots(userId: string) {
   try {
     const courses = await prisma.course.findMany({ where: { user_id: userId } })
@@ -122,8 +173,20 @@ async function getAvailableSlots(userId: string) {
   }
 }
 
-// --- Tool B: 死线管理 ---
+// --- Tool B: 死线管理模块 ---
 
+/**
+ * 查询用户7天内的紧迫死线
+ * 
+ * 逻辑：
+ * 1. 获取当前时间和7天后时间
+ * 2. 查询状态为pending且截止时间在该范围内的死线
+ * 3. 按截止时间升序排列
+ * 4. 转换为前端所需格式，计算倒计时天数
+ * 
+ * @param userId 用户ID
+ * @returns 紧迫死线列表
+ */
 async function getUrgentDeadlines(userId: string): Promise<Deadline[]> {
   try {
     const now = new Date()
@@ -153,6 +216,16 @@ async function getUrgentDeadlines(userId: string): Promise<Deadline[]> {
   }
 }
 
+/**
+ * 创建死线
+ * 
+ * @param userId 用户ID
+ * @param type 死线类型（exam/homework/other）
+ * @param subject 科目名称
+ * @param deadlineTime 截止时间
+ * @param weight 权重（1-5）
+ * @returns 创建的死线对象
+ */
 async function createDeadline(userId: string, type: string, subject: string, deadlineTime: Date, weight: number = 3) {
   try {
     const deadline = await prisma.deadline.create({
@@ -164,8 +237,23 @@ async function createDeadline(userId: string, type: string, subject: string, dea
   }
 }
 
-// --- Tool C: 计划生成（调用 LLM） ---
+// --- Tool C: 计划生成模块（调用LLM） ---
 
+/**
+ * 根据死线生成复习计划
+ * 
+ * 流程：
+ * 1. 查询紧迫死线，找到目标死线
+ * 2. 计算距离考试的天数
+ * 3. 查询可用复习时段
+ * 4. 调用LLM生成详细计划（内置降级策略）
+ * 5. 将LLM结果转换为内部格式
+ * 
+ * @param userId 用户ID
+ * @param ddlId 死线ID
+ * @param dailyHoursLimit 每日学习时长限制
+ * @returns 复习计划对象，无死线时返回null
+ */
 async function generatePlan(userId: string, ddlId: string, dailyHoursLimit: number = 4) {
   const urgentDeadlines = await getUrgentDeadlines(userId)
   const deadline = urgentDeadlines.find(d => d.ddl_id === ddlId) || urgentDeadlines[0]
@@ -176,11 +264,9 @@ async function generatePlan(userId: string, ddlId: string, dailyHoursLimit: numb
   const deadlineDate = new Date(deadline.deadline_time)
   const daysLeft = Math.max(1, Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
 
-  // 查询可用时段
   const availableSlots = await getAvailableSlots(userId)
   const slotLabels = availableSlots.slice(0, 10).map(s => s.label)
 
-  // 调用 LLM 生成计划（内置降级）
   const llmResult = await generateReviewPlan(
     deadline.subject,
     daysLeft,
@@ -190,7 +276,6 @@ async function generatePlan(userId: string, ddlId: string, dailyHoursLimit: numb
     slotLabels
   )
 
-  // 转换为编排引擎内部格式
   const tasks = llmResult.daily_tasks.map((t: DailyTaskLLM, i: number) => ({
     task_id: `task-${Date.now()}-${i}`,
     date: t.date,
@@ -218,12 +303,29 @@ async function generatePlan(userId: string, ddlId: string, dailyHoursLimit: numb
 
 // --- 编排引擎主入口 ---
 
+/**
+ * 编排引擎核心函数
+ * 根据用户意图执行对应的工具链并返回结果
+ * 
+ * 意图处理流程：
+ * 1. course_query: 查询下节课 + 今日课程
+ * 2. deadline_create: 解析日期和科目 → 创建死线
+ * 3. plan_generate: 查询死线 → 查询可用时段 → 生成计划（串联执行）
+ * 4. aggregated_query: 查询今日课程 + 紧迫死线（并行执行）
+ * 5. checkin_feedback: 查询死线状态 → 返回打卡反馈
+ * 6. review_start: 查询死线 → 返回复习建议
+ * 7. boundary: 查询死线 → 生成边界回复
+ * 
+ * @param intent 用户意图类型
+ * @param message 用户输入消息
+ * @param userId 用户ID
+ * @returns 编排结果，包含回复内容、意图、工具调用记录
+ */
 export async function execute(intent: IntentType, message: string, userId: string): Promise<OrchestrationResult> {
   const actions: ToolAction[] = []
 
   switch (intent) {
     case 'course_query': {
-      // Tool A: 查询课表
       const [nextCourse, todayCourses] = await Promise.all([
         getNextCourse(userId),
         getTodayCourses(userId),
@@ -246,7 +348,6 @@ export async function execute(intent: IntentType, message: string, userId: strin
     }
 
     case 'deadline_create': {
-      // Tool B: 创建死线（自动解析日期和科目）
       const info = extractDeadlineInfo(message)
       const subject = info.subject || message
       const today = new Date()
@@ -264,7 +365,6 @@ export async function execute(intent: IntentType, message: string, userId: strin
     }
 
     case 'plan_generate': {
-      // B→A→C 串联执行：先查死线 → 再查可用时段 → 最后生成计划
       const info = extractDeadlineInfo(message)
       const urgentDeadlines = await getUrgentDeadlines(userId)
       const deadline = urgentDeadlines.find(d =>
@@ -275,14 +375,11 @@ export async function execute(intent: IntentType, message: string, userId: strin
         return { reply: '请问是哪门课的考试？考试日期是什么时候？', intent, actions }
       }
 
-      // Step B: 登记死线
       actions.push({ tool: 'deadline', action: 'create', result: '登记考试死线' })
 
-      // Step A: 查询可用复习时段
       const availableSlots = await getAvailableSlots(userId)
       actions.push({ tool: 'course', action: 'query', result: '查询可用复习时段' })
 
-      // Step C: 生成复习计划
       const plan = await generatePlan(userId, deadline.ddl_id)
       actions.push({ tool: 'plan', action: 'generate', result: '生成复习计划' })
 
@@ -307,7 +404,6 @@ export async function execute(intent: IntentType, message: string, userId: strin
     }
 
     case 'aggregated_query': {
-      // Tool A + B 并行查询
       const [todayCourses, urgentDeadlines] = await Promise.all([
         getTodayCourses(userId),
         getUrgentDeadlines(userId),

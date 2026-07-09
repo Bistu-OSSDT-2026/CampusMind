@@ -8,6 +8,9 @@ const headers = {
   'X-User-Id': USER_ID,
 }
 
+const FETCH_TIMEOUT = 10000
+const MAX_RETRIES = 2
+
 export interface ApiResponse<T = any> {
   code: number
   message: string
@@ -27,116 +30,248 @@ export interface DialogResponse {
   urgent_deadline?: Deadline
 }
 
+export interface ApiError extends Error {
+  status?: number
+  code?: number
+}
+
+function createApiError(message: string, status?: number, code?: number): ApiError {
+  const error = new Error(message) as ApiError
+  error.status = status
+  error.code = code
+  return error
+}
+
+async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
+
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal })
+    return response
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
+async function safeFetch<T>(
+  url: string,
+  options: RequestInit = {},
+  retries: number = MAX_RETRIES
+): Promise<ApiResponse<T>> {
+  try {
+    const response = await fetchWithTimeout(url, options)
+
+    if (!response.ok) {
+      try {
+        const errorBody = await response.json()
+        throw createApiError(
+          errorBody.message || `HTTP error! status: ${response.status}`,
+          response.status,
+          errorBody.code
+        )
+      } catch {
+        throw createApiError(`HTTP error! status: ${response.status}`, response.status)
+      }
+    }
+
+    const data = await response.json()
+    
+    if (data.code !== undefined && data.code !== 0) {
+      throw createApiError(data.message || 'API error', response.status, data.code)
+    }
+
+    return data as ApiResponse<T>
+  } catch (error) {
+    if (retries > 0 && (error instanceof Error && error.name === 'AbortError')) {
+      return safeFetch(url, options, retries - 1)
+    }
+    throw error
+  }
+}
+
 export const api = {
   dialog: {
     message: async (message: string, sessionId?: string): Promise<ApiResponse<DialogResponse>> => {
-      const body = { message, session_id: sessionId }
-      const res = await fetch(`${BASE_URL}/dialog/message`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-      })
-      return res.json()
+      try {
+        const body = { message, session_id: sessionId }
+        return await safeFetch<DialogResponse>(`${BASE_URL}/dialog/message`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(body),
+        })
+      } catch (error) {
+        console.error('[API] dialog.message failed:', error)
+        throw error
+      }
     },
     history: async (): Promise<ApiResponse<Message[]>> => {
-      const res = await fetch(`${BASE_URL}/dialog/history`, { headers })
-      return res.json()
+      try {
+        return await safeFetch<Message[]>(`${BASE_URL}/dialog/history`, { headers })
+      } catch (error) {
+        console.error('[API] dialog.history failed:', error)
+        throw error
+      }
     },
     session: async (): Promise<ApiResponse<any>> => {
-      const res = await fetch(`${BASE_URL}/dialog/session`, { headers })
-      return res.json()
+      try {
+        return await safeFetch(`${BASE_URL}/dialog/session`, { headers })
+      } catch (error) {
+        console.error('[API] dialog.session failed:', error)
+        throw error
+      }
     },
     endSession: async (): Promise<ApiResponse<void>> => {
-      const res = await fetch(`${BASE_URL}/dialog/session`, { method: 'DELETE', headers })
-      return res.json()
+      try {
+        return await safeFetch<void>(`${BASE_URL}/dialog/session`, { method: 'DELETE', headers })
+      } catch (error) {
+        console.error('[API] dialog.endSession failed:', error)
+        throw error
+      }
     },
   },
 
   courses: {
     list: async (page = 1, size = 20): Promise<ApiResponse<Course[]>> => {
-      const res = await fetch(`${BASE_URL}/courses?page=${page}&size=${size}`, { headers })
-      return res.json()
+      try {
+        return await safeFetch<Course[]>(`${BASE_URL}/courses?page=${page}&size=${size}`, { headers })
+      } catch (error) {
+        console.error('[API] courses.list failed:', error)
+        throw error
+      }
     },
     today: async (): Promise<ApiResponse<Course[]>> => {
-      const res = await fetch(`${BASE_URL}/courses/today`, { headers })
-      return res.json()
+      try {
+        return await safeFetch<Course[]>(`${BASE_URL}/courses/today`, { headers })
+      } catch (error) {
+        console.error('[API] courses.today failed:', error)
+        throw error
+      }
     },
     next: async (): Promise<ApiResponse<Course | null>> => {
-      const res = await fetch(`${BASE_URL}/courses/next`, { headers })
-      return res.json()
+      try {
+        return await safeFetch<Course | null>(`${BASE_URL}/courses/next`, { headers })
+      } catch (error) {
+        console.error('[API] courses.next failed:', error)
+        throw error
+      }
     },
     availableSlots: async (startDate: string, endDate: string): Promise<ApiResponse<any>> => {
-      const res = await fetch(`${BASE_URL}/courses/available-slots?start_date=${startDate}&end_date=${endDate}`, { headers })
-      return res.json()
+      try {
+        return await safeFetch(`${BASE_URL}/courses/available-slots?start_date=${startDate}&end_date=${endDate}`, { headers })
+      } catch (error) {
+        console.error('[API] courses.availableSlots failed:', error)
+        throw error
+      }
     },
     create: async (course: Omit<Course, 'id' | 'created_at'>): Promise<ApiResponse<Course>> => {
-      const res = await fetch(`${BASE_URL}/courses`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(course),
-      })
-      return res.json()
+      try {
+        return await safeFetch<Course>(`${BASE_URL}/courses`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(course),
+        })
+      } catch (error) {
+        console.error('[API] courses.create failed:', error)
+        throw error
+      }
     },
   },
 
   deadlines: {
     list: async (): Promise<ApiResponse<Deadline[]>> => {
-      const res = await fetch(`${BASE_URL}/deadlines`, { headers })
-      return res.json()
+      try {
+        return await safeFetch<Deadline[]>(`${BASE_URL}/deadlines`, { headers })
+      } catch (error) {
+        console.error('[API] deadlines.list failed:', error)
+        throw error
+      }
     },
     urgent: async (): Promise<ApiResponse<Deadline[]>> => {
-      const res = await fetch(`${BASE_URL}/deadlines/urgent`, { headers })
-      return res.json()
+      try {
+        return await safeFetch<Deadline[]>(`${BASE_URL}/deadlines/urgent`, { headers })
+      } catch (error) {
+        console.error('[API] deadlines.urgent failed:', error)
+        throw error
+      }
     },
     create: async (deadline: Omit<Deadline, 'id' | 'countdown_days' | 'created_at'>): Promise<ApiResponse<Deadline>> => {
-      const res = await fetch(`${BASE_URL}/deadlines`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(deadline),
-      })
-      return res.json()
+      try {
+        return await safeFetch<Deadline>(`${BASE_URL}/deadlines`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(deadline),
+        })
+      } catch (error) {
+        console.error('[API] deadlines.create failed:', error)
+        throw error
+      }
     },
     update: async (id: string, deadline: Partial<Deadline>): Promise<ApiResponse<Deadline>> => {
-      const res = await fetch(`${BASE_URL}/deadlines/${id}`, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(deadline),
-      })
-      return res.json()
+      try {
+        return await safeFetch<Deadline>(`${BASE_URL}/deadlines/${id}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(deadline),
+        })
+      } catch (error) {
+        console.error('[API] deadlines.update failed:', error)
+        throw error
+      }
     },
     complete: async (id: string): Promise<ApiResponse<Deadline>> => {
-      const res = await fetch(`${BASE_URL}/deadlines/${id}/complete`, {
-        method: 'PUT',
-        headers,
-      })
-      return res.json()
+      try {
+        return await safeFetch<Deadline>(`${BASE_URL}/deadlines/${id}/complete`, {
+          method: 'PUT',
+          headers,
+        })
+      } catch (error) {
+        console.error('[API] deadlines.complete failed:', error)
+        throw error
+      }
     },
     delete: async (id: string): Promise<ApiResponse<void>> => {
-      const res = await fetch(`${BASE_URL}/deadlines/${id}`, {
-        method: 'DELETE',
-        headers,
-      })
-      return res.json()
+      try {
+        return await safeFetch<void>(`${BASE_URL}/deadlines/${id}`, {
+          method: 'DELETE',
+          headers,
+        })
+      } catch (error) {
+        console.error('[API] deadlines.delete failed:', error)
+        throw error
+      }
     },
   },
 
   plans: {
     generate: async (ddlId: string, dailyHoursLimit?: number): Promise<ApiResponse<Plan>> => {
-      const body = { ddl_id: ddlId, daily_hours_limit: dailyHoursLimit || 4 }
-      const res = await fetch(`${BASE_URL}/plans/generate`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-      })
-      return res.json()
+      try {
+        const body = { ddl_id: ddlId, daily_hours_limit: dailyHoursLimit || 4 }
+        return await safeFetch<Plan>(`${BASE_URL}/plans/generate`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(body),
+        })
+      } catch (error) {
+        console.error('[API] plans.generate failed:', error)
+        throw error
+      }
     },
     list: async (): Promise<ApiResponse<Plan[]>> => {
-      const res = await fetch(`${BASE_URL}/plans`, { headers })
-      return res.json()
+      try {
+        return await safeFetch<Plan[]>(`${BASE_URL}/plans`, { headers })
+      } catch (error) {
+        console.error('[API] plans.list failed:', error)
+        throw error
+      }
     },
     today: async (): Promise<ApiResponse<any>> => {
-      const res = await fetch(`${BASE_URL}/plans/today`, { headers })
-      return res.json()
+      try {
+        return await safeFetch(`${BASE_URL}/plans/today`, { headers })
+      } catch (error) {
+        console.error('[API] plans.today failed:', error)
+        throw error
+      }
     },
   },
 }

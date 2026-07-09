@@ -1,227 +1,250 @@
-# CampusMind 校园学业规划助手
+# CampusMind - 校园学业规划助手
 
-一款帮助大学生制定学期学习计划、追踪课程进度的轻量工具。
+![CampusMind Logo](https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=modern%20education%20app%20icon%20with%20graduation%20cap%20and%20calendar&image_size=square)
 
----
+CampusMind 是一款面向大学生的智能学业规划助手，帮助学生高效管理课程、追踪死线、生成个性化复习计划。
 
-## 功能特性
+## ✨ 功能特性
 
-- 📅 **课表管理** - 手动录入课程，查询今日课程、下节课
-- ⏰ **死线提醒** - 登记作业/考试截止时间，阶梯提醒
-- 🤖 **智能计划** - LLM辅助生成复习计划，自动编排时间
-- 💬 **对话交互** - 自然语言交互，多工具串联执行
-- 📊 **学情复盘** - 学习进度追踪，薄弱点分析
+### 📚 课程管理
+- 查询今日课程安排
+- 查询下节课信息
+- 完整课表展示
+- 添加新课程
 
----
+### ⏰ 死线管理
+- 自动识别紧迫死线（7天内）
+- 支持作业、考试等多种类型
+- 标记完成/延期操作
+- 倒计时提醒
 
-## 技术栈
+### 📋 智能复习计划
+- 根据考试日期自动生成复习计划
+- 分析薄弱知识点
+- 每日学习任务分配
+- 避开课程时段
 
-- **前端**: Next.js 14 + React 18 + TypeScript + Tailwind CSS 3
-- **后端**: Next.js API Routes
-- **数据库**: PostgreSQL + Prisma ORM
-- **缓存**: Redis
-- **LLM**: OpenAI API
+### 💬 自然语言交互
+- 支持中文自然语言查询
+- 智能意图识别
+- 多轮对话支持
+- 上下文理解
 
----
+## 🛠️ 技术栈
 
-## 运行或使用说明
+| 层级 | 技术 |
+|------|------|
+| 前端框架 | Next.js 14 (App Router) |
+| 前端语言 | TypeScript |
+| 样式方案 | Tailwind CSS 3 |
+| 状态管理 | React Hooks |
+| 数据库 | PostgreSQL (Prisma ORM) |
+| 缓存 | Redis |
+| AI集成 | OpenAI GPT-4o-mini |
+| 部署 | Docker + GitHub Actions |
 
-### 方法一：Docker一键启动（推荐）
-
-```bash
-# 1. 克隆仓库
-git clone https://github.com/Bistu-OSSDT-2026/CampusMind
-cd CampusMind
-
-# 2. 启动所有服务（数据库 + Redis + 应用）
-docker-compose up
-
-# 3. 访问应用
-# 前端: http://localhost:3000
-# Prisma Studio: http://localhost:5555
-```
-
-### 方法二：本地开发
-
-#### 环境要求
-
-- Node.js >= 20
-- npm >= 10
-- Docker Desktop（用于数据库）
-
-#### 安装步骤
-
-```bash
-# 1. 克隆仓库
-git clone https://github.com/Bistu-OSSDT-2026/CampusMind
-cd CampusMind
-
-# 2. 安装依赖
-npm install
-
-# 3. 启动数据库
-docker-compose up -d postgres redis
-
-# 4. 配置环境变量
-cp .env.example .env
-# 编辑 .env，填写 OPENAI_API_KEY（可选）
-
-# 5. 数据库迁移
-npx prisma migrate dev
-
-# 6. 预置Mock数据（可选）
-npx prisma db seed
-
-# 7. 运行开发服务器
-npm run dev
-```
-
-#### 访问地址
-
-- 前端: http://localhost:3000
-- Prisma Studio: http://localhost:5555
-
-### 核心功能使用
-
-#### 1. 课表查询
-- 发送"下节课是什么"查询下节课
-- 发送"今天有几节课"查询今日课程
-- 发送"课表"查看完整课表
-
-#### 2. 死线提醒
-- 发送"周五考高数"创建考试提醒
-- 发送"明天交作业"创建作业截止提醒
-
-#### 3. 智能计划
-- 发送"帮我生成复习计划"生成学习计划
-- 发送"周五考高数，帮我生成复习计划"结合死线生成计划
-
-#### 4. 边界处理
-- 非学业内容会被礼貌拒绝并引导回学业主题
-
----
-
-## 项目结构
+## 📁 项目结构
 
 ```
 CampusMind/
-├── app/                    # Next.js 应用目录
-│   ├── courses/            # 课表模块 API
-│   ├── deadlines/          # 死线模块 API
-│   ├── dialog/             # 对话模块 API
-│   ├── plans/             # 计划模块 API
-│   ├── components/        # 前端组件
-│   ├── globals.css        # 全局样式
-│   ├── layout.tsx         # 布局组件
-│   └── page.tsx           # 首页
-├── lib/                   # 工具函数
-│   ├── prisma.ts          # Prisma 客户端
-│   ├── redis.ts           # Redis 客户端
-│   ├── intent.ts          # 意图识别
-│   ├── orchestrator.ts    # 工具编排引擎
-│   ├── llm.ts            # LLM 服务
-│   ├── api.ts            # 前端 API 客户端
-│   └── logger.ts         # 日志工具
-├── prisma/                # Prisma 配置
-│   ├── schema.prisma      # 数据模型
-│   └── seed.ts           # Mock数据预置
-├── types/                 # TypeScript 类型定义
-├── .github/               # GitHub 配置
-│   ├── workflows/         # CI 工作流
-│   ├── ISSUE_TEMPLATE/    # Issue 模板
-│   ├── PULL_REQUEST_TEMPLATE.md
-│   └── CODEOWNERS
-├── docker-compose.yml     # Docker 配置（一键启动）
-├── Dockerfile             # Docker 应用镜像
-├── .env.example          # 环境变量模板
-├── CONTRIBUTING.md       # 贡献指南
-└── TASKS.md              # 开发任务清单
+├── app/
+│   ├── api/           # API路由
+│   │   ├── courses/   # 课程接口
+│   │   ├── deadlines/ # 死线接口
+│   │   └── dialog/    # 对话接口
+│   ├── layout.tsx     # 布局组件
+│   └── page.tsx       # 主页面
+├── components/        # 前端组件
+│   ├── Sidebar.tsx    # 侧边栏
+│   ├── ChatInput.tsx  # 聊天输入
+│   ├── MessageList.tsx # 消息列表
+│   └── ChatMessage.tsx # 消息气泡
+├── lib/               # 核心逻辑
+│   ├── api.ts         # API封装
+│   ├── intent.ts      # 意图识别
+│   ├── orchestrator.ts # 编排引擎
+│   ├── llm.ts         # LLM调用
+│   ├── prisma.ts      # Prisma客户端
+│   ├── redis.ts       # Redis客户端
+│   └── logger.ts      # 日志工具
+├── types/             # TypeScript类型定义
+├── prisma/            # Prisma配置
+└── public/            # 静态资源
 ```
 
----
+## 🚀 快速开始
 
-## 核心场景测试
+### 前置要求
 
-| 用例 | 用户输入 | 预期结果 |
-|------|---------|---------|
-| TC-01 | "下节课是什么" | 返回下节课信息 |
-| TC-02 | "周五考高数" | 创建死线提醒 |
-| TC-03 | "周五考高数，帮我生成复习计划" | 编排执行并生成计划 |
-| TC-04 | "今天食堂有啥" | 礼貌拒绝并引导 |
-| TC-05 | "帮我生成计划" | 追问必要参数 |
+- Node.js >= 18
+- npm >= 9
+- PostgreSQL (可选，用于生产环境)
+- Redis (可选，用于缓存)
 
----
-
-## 环境变量
+### 安装步骤
 
 ```bash
-# .env
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/guardgpa?schema=public"
+# 克隆仓库
+git clone https://github.com/Bistu-OSSDT-2026/CampusMind.git
+cd CampusMind
+
+# 安装依赖
+npm install
+
+# 创建环境变量文件
+cp .env.example .env
+```
+
+### 环境变量配置
+
+编辑 `.env` 文件：
+
+```env
+# 数据库配置（可选）
+DATABASE_URL="postgresql://user:password@localhost:5432/campusmind"
+
+# Redis配置（可选）
 REDIS_URL="redis://localhost:6379"
-OPENAI_API_KEY="your-openai-api-key"      # 可选，不填则使用Mock数据
+
+# OpenAI API Key（启用AI功能）
+OPENAI_API_KEY="your-openai-api-key"
+
+# 用户ID（测试用）
 NEXT_PUBLIC_USER_ID="test-user-1"
-NODE_ENV="development"
 ```
 
----
+### 启动开发服务器
 
-## 开发工作流
-
-### 分支管理
-
-```
-main (保护分支)
-    ↓
-feature/d1-2-course-module (开发分支)
-    ↓
-创建 Pull Request → 代码审查 → 合并到 main
+```bash
+npm run dev
 ```
 
-### 提交规范
+访问 http://localhost:3000 查看应用。
 
+### 构建生产版本
+
+```bash
+npm run build
+npm start
 ```
-<类型>(<任务编号>): <描述>
 
-详细说明
+## 📖 使用说明
 
-关联 Issue: #123
+### 基础对话指令
+
+| 指令示例 | 功能 |
+|----------|------|
+| "下节课是什么？" | 查询下节课信息 |
+| "今天有几节课？" | 查询今日课程 |
+| "周五考高数" | 创建考试死线 |
+| "帮我生成复习计划" | 生成复习计划 |
+| "今天有什么任务？" | 今日概览 |
+| "今天看完了" | 打卡反馈 |
+
+### 死线管理
+
+1. 在侧边栏查看紧迫死线列表
+2. 点击死线卡片展开操作按钮
+3. 点击「标记完成」移除已完成任务
+4. 点击「延期一天」延长截止日期
+
+### 课程查询
+
+- 通过对话查询课程信息
+- 支持查询今日课程和下节课
+- 自动避开课程时段安排复习
+
+## 🧪 测试用例
+
+### 功能测试
+
+| 测试场景 | 输入 | 预期输出 |
+|----------|------|----------|
+| 查询下节课 | "下节课是什么？" | 返回下节课名称、地点、时间 |
+| 创建死线 | "周五考高数" | 创建高数考试死线，显示倒计时 |
+| 生成计划 | "帮我生成复习计划" | 生成详细复习计划 |
+| 今日概览 | "今天有什么任务？" | 显示课程和死线汇总 |
+| 标记完成 | 点击「标记完成」 | 死线从列表移除 |
+
+### 边界测试
+
+| 测试场景 | 输入 | 预期输出 |
+|----------|------|----------|
+| 无课程 | "今天有课吗？" | 返回"今天没有课程安排" |
+| 无死线 | "帮我生成复习计划" | 提示创建死线 |
+| 空输入 | "" | 不发送消息 |
+| 超长消息 | 1000字符以上 | 正常处理 |
+| 边界问题 | "食堂在哪？" | 友好的边界回复 |
+
+## 🐳 Docker部署
+
+### 启动服务
+
+```bash
+docker-compose up -d
 ```
 
-### 类型说明
+### 停止服务
 
-| 类型 | 说明 |
-|-----|------|
-| `feat` | 新功能 |
-| `fix` | 修复Bug |
-| `docs` | 文档更新 |
-| `refactor` | 代码重构 |
-| `test` | 测试代码 |
-| `chore` | 构建/CI |
+```bash
+docker-compose down
+```
 
----
+### 查看日志
 
-## 分工说明
+```bash
+docker-compose logs -f
+```
 
-| 分工类别 | 负责模块 |
-|---------|---------|
-| 项目协调与版本集成 | 项目初始化、部署集成 |
-| 核心功能开发 | 意图识别、工具编排、LLM计划生成 |
-| 前端页面开发 | 聊天界面、组件开发 |
-| 后端或接口开发 | API路由、数据库操作 |
-| 数据处理 | Mock数据、数据库迁移 |
-| 测试与问题处理 | 测试用例、Bug修复 |
-| CI与自动化检查 | CI配置、代码检查 |
-| 项目文档 | README、CONTRIBUTING |
-| 版本发布 | 版本管理、发布流程 |
+## 🔄 CI/CD
 
----
+项目使用 GitHub Actions 自动构建和部署：
 
-## 许可证
+- **推送main分支**：自动执行构建和测试
+- **创建Release**：自动部署到生产环境
+
+## 📝 API文档
+
+### 课程接口
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/courses` | 查询全部课程 |
+| GET | `/api/courses/today` | 查询今日课程 |
+| GET | `/api/courses/next` | 查询下节课 |
+| POST | `/api/courses` | 创建课程 |
+
+### 死线接口
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/deadlines` | 查询全部死线 |
+| GET | `/api/deadlines/urgent` | 查询紧迫死线 |
+| POST | `/api/deadlines` | 创建死线 |
+| PUT | `/api/deadlines/:id` | 更新死线 |
+| PUT | `/api/deadlines/:id/complete` | 标记完成 |
+| DELETE | `/api/deadlines/:id` | 删除死线 |
+
+### 对话接口
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/dialog/message` | 发送消息 |
+| GET | `/api/dialog/history` | 查询历史 |
+| POST | `/api/dialog/session` | 创建会话 |
+
+## 🤝 贡献指南
+
+1. Fork 仓库
+2. 创建分支 `git checkout -b feature/xxx`
+3. 提交更改 `git commit -m "feat: xxx"`
+4. 推送到远程 `git push origin feature/xxx`
+5. 创建 Pull Request
+
+## 📄 许可证
 
 MIT License
 
----
+## 📞 联系方式
 
-## 贡献
-
-请参考 [CONTRIBUTING.md](CONTRIBUTING.md) 获取详细的贡献指南。
+如有问题或建议，请提交 Issue 或联系开发团队。

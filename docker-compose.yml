@@ -1,56 +1,45 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:16
-    container_name: campusmind-postgres
-    ports:
-      - '5432:5432'
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: guardgpa
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7
-    container_name: campusmind-redis
-    ports:
-      - '6379:6379'
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: campusmind-app
     ports:
-      - '3000:3000'
+      - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/guardgpa?schema=public
-      REDIS_URL: redis://redis:6379
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-your-openai-api-key}
-      NEXT_PUBLIC_USER_ID: test-user-1
-      NODE_ENV: development
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - NEXT_PUBLIC_USER_ID=${NEXT_PUBLIC_USER_ID}
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - db
+      - redis
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    container_name: campusmind-db
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=campusmind
+      - POSTGRES_USER=campusmind
+      - POSTGRES_PASSWORD=campusmind
     volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/.next
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: campusmind-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
 
 volumes:
   postgres_data:
