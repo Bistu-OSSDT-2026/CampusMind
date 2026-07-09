@@ -2,11 +2,11 @@
 
 CampusMind 是一款面向大学生的智能学业规划助手，帮助学生高效管理课程、追踪死线、生成个性化复习计划。
 
-[![快速安装](https://img.shields.io/badge/快速安装-点击开始-blue)](https://github.com/Bistu-OSSDT-2026/CampusMind/releases/tag/v1.1.0)
+[![快速安装](https://img.shields.io/badge/快速安装-点击开始-blue)](./INSTALL.md)
 
-> 🚀 **[快速安装点这里](https://github.com/Bistu-OSSDT-2026/CampusMind/releases/tag/v1.1.0)** - 直接下载最新版本并开始使用
+> 🚀 **[快速安装点这里](./INSTALL.md)** - 查看详细安装指南，包含前置条件、环境配置和下载链接
 > 
-> 📖 **详细安装指南**: 请查阅 [INSTALL.md](file:///d:/Desktop/CM/INSTALL.md)，包含完整的环境配置步骤和常见问题解答
+> 📖 **详细安装指南**: 请查阅 [INSTALL.md](./INSTALL.md)，包含完整的环境配置步骤和常见问题解答
 
 ## ✨ 功能特性
 
