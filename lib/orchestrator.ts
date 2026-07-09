@@ -1,6 +1,7 @@
 import { IntentType } from './intent'
 import { extractDeadlineInfo } from './intent'
 import { prisma } from './prisma'
+import { generateReviewPlan, type LLMPlanResult, type DailyTaskLLM } from './llm'
 import type { ToolAction, OrchestrationResult, Deadline } from '@/types'
 
 const periodStartTimes = [
@@ -162,7 +163,7 @@ async function createDeadline(userId: string, type: string, subject: string, dea
   }
 }
 
-// --- Tool C: 计划生成 ---
+// --- Tool C: 计划生成（调用 LLM） ---
 
 async function generatePlan(userId: string, ddlId: string, dailyHoursLimit: number = 4) {
   const urgentDeadlines = await getUrgentDeadlines(userId)
@@ -174,28 +175,41 @@ async function generatePlan(userId: string, ddlId: string, dailyHoursLimit: numb
   const deadlineDate = new Date(deadline.deadline_time)
   const daysLeft = Math.max(1, Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
 
-  const knowledgePoints = ['极限与连续', '导数与微分', '中值定理', '积分', '微分方程']
-  const tasks: any[] = []
+  // 查询可用时段
+  const availableSlots = await getAvailableSlots(userId)
+  const slotLabels = availableSlots.slice(0, 10).map(s => s.label)
 
-  for (let i = 0; i < daysLeft; i++) {
-    const taskDate = new Date(now.getTime() + i * 24 * 60 * 60 * 1000)
-    const pointIndex = i % knowledgePoints.length
-    tasks.push({
-      task_id: `task-${Date.now()}-${i}`,
-      date: taskDate.toISOString().split('T')[0],
-      knowledge_points: [knowledgePoints[pointIndex]],
-      time_slot: '19:00-21:00',
-      duration_minutes: dailyHoursLimit * 60,
-      status: 'pending',
-    })
-  }
+  // 调用 LLM 生成计划（内置降级）
+  const llmResult = await generateReviewPlan(
+    deadline.subject,
+    daysLeft,
+    dailyHoursLimit,
+    [],
+    [],
+    slotLabels
+  )
+
+  // 转换为编排引擎内部格式
+  const tasks = llmResult.daily_tasks.map((t: DailyTaskLLM, i: number) => ({
+    task_id: `task-${Date.now()}-${i}`,
+    date: t.date,
+    knowledge_points: t.knowledge_points,
+    title: t.title,
+    exercises: t.exercises,
+    time_slot: `${t.duration_hours}小时`,
+    duration_minutes: t.duration_hours * 60,
+    priority: t.priority,
+    status: 'pending' as const,
+  }))
 
   return {
     plan_id: `plan-${Date.now()}`,
+    plan_name: llmResult.plan_name,
     subject: `${deadline.subject}冲刺复习计划`,
     exam_date: deadline.deadline_time,
     status: 'active' as const,
     daily_hours_limit: dailyHoursLimit,
+    total_hours: llmResult.total_hours,
     generated_at: new Date().toISOString(),
     tasks,
   }
@@ -274,13 +288,14 @@ export async function execute(intent: IntentType, message: string, userId: strin
       if (plan) {
         const taskList = plan.tasks.map((t: any, i: number) => {
           const dayLabel = i === 0 ? '今' : i === 1 ? '明' : `${weekdayLabels[new Date(t.date).getDay()]}`
-          return `D-${plan.tasks.length - i}（${dayLabel}）：${t.knowledge_points.join(' + ')}`
+          const priorityLabel = t.priority === 'high' ? '🔴' : t.priority === 'medium' ? '🟡' : '🟢'
+          return `D-${plan.tasks.length - i}（${dayLabel}）：${t.knowledge_points.join(' + ')} ${priorityLabel}`
         }).join('\n')
 
         const slotSummary = availableSlots.slice(0, 5).map(s => s.label).join('、')
 
         return {
-          reply: `【${plan.subject}】\n\n${taskList}\n\n已避开全部课表时段，每日${plan.daily_hours_limit}小时复习时间。\n可用时段：${slotSummary}等`,
+          reply: `【${plan.plan_name}】\n总时长：${plan.total_hours}小时 | 每日：${plan.daily_hours_limit}小时\n\n${taskList}\n\n已避开全部课表时段。\n可用时段：${slotSummary}等`,
           intent,
           actions,
           urgent_deadline: deadline,
