@@ -99,9 +99,33 @@ export default function Home() {
       }, 100)
     }
 
+    const handleDeadlineComplete = async (ddlId: string) => {
+      try {
+        await api.deadlines.complete(ddlId)
+        loadSidebarData()
+      } catch {
+        console.error('Failed to complete deadline')
+      }
+    }
+
+    const handleDeadlineExtend = async (ddlId: string) => {
+      try {
+        await api.deadlines.update(ddlId, { deadline_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() })
+        loadSidebarData()
+      } catch {
+        console.error('Failed to extend deadline')
+      }
+    }
+
   return (
     <div className="flex h-screen bg-gradient-to-br from-slate-50 via-primary-50/20 to-teal-50/20">
-      <Sidebar todayCourses={todayCourses} urgentDeadlines={urgentDeadlines} onQuickAction={handleQuickAction} />
+      <Sidebar
+        todayCourses={todayCourses}
+        urgentDeadlines={urgentDeadlines}
+        onQuickAction={handleQuickAction}
+        onDeadlineComplete={handleDeadlineComplete}
+        onDeadlineExtend={handleDeadlineExtend}
+      />
 
       <main className="flex-1 flex flex-col min-w-0">
         <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 lg:hidden">

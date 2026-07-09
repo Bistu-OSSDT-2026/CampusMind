@@ -5,6 +5,8 @@ interface SidebarProps {
   todayCourses: Course[]
   urgentDeadlines: Deadline[]
   onQuickAction: (text: string) => void
+  onDeadlineComplete?: (ddlId: string) => void
+  onDeadlineExtend?: (ddlId: string) => void
 }
 
 const weekdayMap = ['日', '一', '二', '三', '四', '五', '六']
@@ -69,7 +71,7 @@ const quickActions = [
   { text: '今天有什么作业？', icon: '✏️' },
 ]
 
-export function Sidebar({ todayCourses, urgentDeadlines, onQuickAction }: SidebarProps) {
+export function Sidebar({ todayCourses, urgentDeadlines, onQuickAction, onDeadlineComplete, onDeadlineExtend }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [width, setWidth] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
@@ -301,10 +303,22 @@ export function Sidebar({ todayCourses, urgentDeadlines, onQuickAction }: Sideba
                     {isExpanded && !isCompleted && (
                       <div className="px-3 pb-3 pt-0 border-t border-gray-100/50 mt-2 animate-fadeIn">
                         <div className="flex gap-2 mt-2">
-                          <button className="flex-1 text-xs py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onDeadlineComplete?.(deadline.ddl_id)
+                            }}
+                            className="flex-1 text-xs py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors"
+                          >
                             ✓ 标记完成
                           </button>
-                          <button className="flex-1 text-xs py-2 bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-100 transition-colors">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onDeadlineExtend?.(deadline.ddl_id)
+                            }}
+                            className="flex-1 text-xs py-2 bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-100 transition-colors"
+                          >
                             ⏱ 延期一天
                           </button>
                         </div>
