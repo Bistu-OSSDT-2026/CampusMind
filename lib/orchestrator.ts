@@ -75,6 +75,7 @@ async function getTodayCourses(userId: string) {
     return [
       { course_id: 'course-math', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: mockWeekday, start_period: 1, end_period: 2 },
       { course_id: 'course-physics', name: '大学物理', teacher: '李教授', location: '物理系楼B203', weekday: mockWeekday, start_period: 3, end_period: 4 },
+      { course_id: 'course-linear-algebra', name: '线性代数', teacher: '王教授', location: '数学楼C305', weekday: mockWeekday, start_period: 6, end_period: 7 },
     ]
   }
 }
@@ -120,6 +121,7 @@ async function getNextCourse(userId: string) {
     const mockCourses = [
       { course_id: 'course-math', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday, start_period: 1, end_period: 2 },
       { course_id: 'course-physics', name: '大学物理', teacher: '李教授', location: '物理系楼B203', weekday, start_period: 3, end_period: 4 },
+      { course_id: 'course-linear-algebra', name: '线性代数', teacher: '王教授', location: '数学楼C305', weekday, start_period: 6, end_period: 7 },
     ]
     for (const course of mockCourses) {
       const startTime = periodStartTimes.find(p => p.period === course.start_period)
@@ -223,7 +225,9 @@ async function getUrgentDeadlines(userId: string): Promise<Deadline[]> {
     const now = new Date()
     return [
       { ddl_id: 'ddl-math-homework', type: 'homework', subject: '高数作业 P132', deadline_time: new Date(now.getTime() + 86400000).toISOString(), countdown_days: 1, weight: 4, status: 'pending', created_at: now.toISOString() },
-      { ddl_id: 'ddl-math-exam', type: 'exam', subject: '高数考试', deadline_time: new Date(now.getTime() + 4 * 86400000).toISOString(), countdown_days: 4, weight: 5, status: 'pending', created_at: now.toISOString() },
+      { ddl_id: 'ddl-physics-report', type: 'homework', subject: '物理实验报告', deadline_time: new Date(now.getTime() + 2 * 86400000).toISOString(), countdown_days: 2, weight: 3, status: 'pending', created_at: now.toISOString() },
+      { ddl_id: 'ddl-math-exam', type: 'exam', subject: '高数期中考试', deadline_time: new Date(now.getTime() + 4 * 86400000).toISOString(), countdown_days: 4, weight: 5, status: 'pending', created_at: now.toISOString() },
+      { ddl_id: 'ddl-linear-algebra-exam', type: 'exam', subject: '线性代数期末考试', deadline_time: new Date(now.getTime() + 7 * 86400000).toISOString(), countdown_days: 7, weight: 5, status: 'pending', created_at: now.toISOString() },
     ]
   }
 }

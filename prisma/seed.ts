@@ -48,6 +48,22 @@ async function main() {
     },
   })
 
+  const linearAlgebraCourse = await prisma.course.upsert({
+    where: { course_id: 'course-linear-algebra' },
+    update: {},
+    create: {
+      course_id: 'course-linear-algebra',
+      user_id: user.user_id,
+      name: '线性代数',
+      teacher: '王教授',
+      location: '数学楼C305',
+      weekday: 2,
+      start_period: 6,
+      end_period: 7,
+      week_range: '1-16',
+    },
+  })
+
   await prisma.deadline.upsert({
     where: { ddl_id: 'ddl-math-homework' },
     update: {},
@@ -86,10 +102,25 @@ async function main() {
       user_id: user.user_id,
       course_id: mathCourse.course_id,
       type: 'exam',
-      subject: '高数考试',
+      subject: '高数期中考试',
       deadline_time: new Date(Date.now() + 4 * 86400000),
       weight: 5,
       description: '期中考试',
+    },
+  })
+
+  await prisma.deadline.upsert({
+    where: { ddl_id: 'ddl-linear-algebra-exam' },
+    update: {},
+    create: {
+      ddl_id: 'ddl-linear-algebra-exam',
+      user_id: user.user_id,
+      course_id: linearAlgebraCourse.course_id,
+      type: 'exam',
+      subject: '线性代数期末考试',
+      deadline_time: new Date(Date.now() + 7 * 86400000),
+      weight: 5,
+      description: '期末考试',
     },
   })
 

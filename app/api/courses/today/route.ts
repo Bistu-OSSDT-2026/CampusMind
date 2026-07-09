@@ -24,6 +24,17 @@ const mockCourses = [
     week_range: '1-16',
     created_at: '2026-07-01T08:00:00Z',
   },
+  {
+    course_id: 'course-3',
+    name: '线性代数',
+    teacher: '王教授',
+    location: '数学楼C305',
+    weekday: 2,
+    start_period: 6,
+    end_period: 7,
+    week_range: '1-16',
+    created_at: '2026-07-01T08:00:00Z',
+  },
 ]
 
 export async function GET(request: NextRequest) {
