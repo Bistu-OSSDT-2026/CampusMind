@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
+import { mockCourses, getTodayWeekday } from '@/lib/mock-data'
 
-const mockNextCourse = {
-  course_id: 'course-1',
-  name: '高等数学',
-  teacher: '张教授',
-  location: '教学楼A101',
-  weekday: 1,
-  start_period: 1,
-  end_period: 2,
-  week_range: '1-16',
-  created_at: '2026-07-01T08:00:00Z',
+const PERIOD_TIMES: Record<number, { start: string; end: string }> = {
+  1: { start: '08:00', end: '09:35' },
+  2: { start: '09:50', end: '11:25' },
+  3: { start: '11:40', end: '13:15' },
+  4: { start: '13:30', end: '15:05' },
+  5: { start: '15:20', end: '16:55' },
+  6: { start: '17:10', end: '18:45' },
+  7: { start: '19:00', end: '20:35' },
+  8: { start: '20:50', end: '22:25' },
 }
 
 export async function GET(request: NextRequest) {
@@ -24,86 +23,63 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
   }
 
-  try {
-    const courses = await prisma.course.findMany({
-      where: { user_id: userId },
-      orderBy: [{ weekday: 'asc' }, { start_period: 'asc' }],
-    })
+  const today = new Date()
+  const currentWeekday = getTodayWeekday()
+  const currentHour = today.getHours()
+  const currentMinute = today.getMinutes()
 
-    const today = new Date()
-    const currentWeekday = today.getDay() === 0 ? 7 : today.getDay()
-    const currentHour = today.getHours()
-    const currentMinute = today.getMinutes()
+  const sortedCourses = [...mockCourses].sort((a, b) => {
+    if (a.weekday !== b.weekday) return a.weekday - b.weekday
+    return a.start_period - b.start_period
+  })
 
-    const periodStartTimes = [
-      { period: 1, hour: 8, minute: 0 },
-      { period: 2, hour: 8, minute: 55 },
-      { period: 3, hour: 10, minute: 0 },
-      { period: 4, hour: 10, minute: 55 },
-      { period: 5, hour: 12, minute: 0 },
-      { period: 6, hour: 13, minute: 30 },
-      { period: 7, hour: 14, minute: 25 },
-      { period: 8, hour: 15, minute: 30 },
-      { period: 9, hour: 16, minute: 25 },
-      { period: 10, hour: 17, minute: 30 },
-      { period: 11, hour: 18, minute: 30 },
-      { period: 12, hour: 19, minute: 25 },
-    ]
+  let nextCourse = null
 
-    let nextCourse = null
+  for (const course of sortedCourses) {
+    const startTime = PERIOD_TIMES[course.start_period]
+    if (!startTime) continue
 
-    for (const course of courses) {
-      const startTime = periodStartTimes.find((p) => p.period === course.start_period)
-      if (!startTime) continue
+    if (course.weekday > currentWeekday) {
+      nextCourse = course
+      break
+    }
 
-      if (course.weekday > currentWeekday) {
-        nextCourse = course
-        break
-      }
-
-      if (course.weekday === currentWeekday) {
-        if (startTime.hour > currentHour ||
-          (startTime.hour === currentHour && startTime.minute > currentMinute)) {
+    if (course.weekday === currentWeekday) {
+      if (startTime.start) {
+        const [sh, sm] = startTime.start.split(':').map(Number)
+        if (sh > currentHour || (sh === currentHour && sm > currentMinute)) {
           nextCourse = course
           break
         }
       }
     }
-
-    if (!nextCourse && courses.length > 0) {
-      nextCourse = courses[0]
-    }
-
-    const responseData = {
-      code: 0,
-      message: 'success',
-      data: nextCourse
-        ? {
-            course_id: nextCourse.course_id,
-            name: nextCourse.name,
-            teacher: nextCourse.teacher || '未知',
-            location: nextCourse.location || '未知地点',
-            weekday: nextCourse.weekday,
-            start_period: nextCourse.start_period,
-            end_period: nextCourse.end_period,
-            week_range: nextCourse.week_range || '1-16',
-            created_at: nextCourse.created_at.toISOString(),
-          }
-        : null,
-    }
-
-    logger.api.response('GET', '/api/courses/next', 200, responseData)
-    return NextResponse.json(responseData)
-  } catch {
-    logger.api.processing('查询下节课（Mock模式）')
-
-    const responseData = {
-      code: 0,
-      message: 'success',
-      data: mockNextCourse,
-    }
-
-    logger.api.response('GET', '/api/courses/next', 200, responseData)
-    return NextResponse.json(responseData)
   }
+
+  if (!nextCourse && sortedCourses.length > 0) {
+    nextCourse = sortedCourses[0]
+  }
+
+  const responseData = {
+    code: 0,
+    message: 'success',
+    data: nextCourse
+      ? {
+          course_id: nextCourse.id,
+          name: nextCourse.name,
+          teacher: nextCourse.teacher || '未知',
+          location: nextCourse.location || '未知地点',
+          weekday: nextCourse.weekday,
+          start_period: nextCourse.start_period,
+          end_period: nextCourse.end_period,
+          week_range: nextCourse.week_range || '1-16',
+          created_at: nextCourse.created_at,
+          time: PERIOD_TIMES[nextCourse.start_period] && PERIOD_TIMES[nextCourse.end_period]
+            ? `${PERIOD_TIMES[nextCourse.start_period].start}-${PERIOD_TIMES[nextCourse.end_period].end}`
+            : `${nextCourse.start_period * 2 - 1}:00-${nextCourse.end_period * 2}:00`,
+        }
+      : null,
+  }
+
+  logger.api.response('GET', '/api/courses/next', 200, responseData)
+  return NextResponse.json(responseData)
 }

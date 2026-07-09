@@ -43,7 +43,7 @@ describe('编排引擎模块', () => {
       const result = await execute('course_query', '下节课是什么', 'test-user')
 
       expect(result.intent).toBe('course_query')
-      expect(result.reply).toContain('高等数学')
+      expect(result.reply).toMatch(/(高等数学|大学物理|线性代数)/)
       expect(result.actions).toBeDefined()
     })
 

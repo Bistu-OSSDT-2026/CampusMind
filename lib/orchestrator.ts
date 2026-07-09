@@ -72,11 +72,16 @@ async function getTodayCourses(userId: string) {
   } catch {
     const today = new Date()
     const mockWeekday = today.getDay() === 0 ? 7 : today.getDay()
-    return [
-      { course_id: 'course-math', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: mockWeekday, start_period: 1, end_period: 2 },
-      { course_id: 'course-physics', name: '大学物理', teacher: '李教授', location: '物理系楼B203', weekday: mockWeekday, start_period: 3, end_period: 4 },
-      { course_id: 'course-linear-algebra', name: '线性代数', teacher: '王教授', location: '数学楼C305', weekday: mockWeekday, start_period: 6, end_period: 7 },
+    const mockCourses = [
+      { course_id: 'course-math-mon', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: 1, start_period: 1, end_period: 2 },
+      { course_id: 'course-math-wed', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: 3, start_period: 1, end_period: 2 },
+      { course_id: 'course-math-fri', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: 5, start_period: 1, end_period: 2 },
+      { course_id: 'course-phy-tue', name: '大学物理', teacher: '李教授', location: '物理系楼B203', weekday: 2, start_period: 3, end_period: 4 },
+      { course_id: 'course-phy-thu', name: '大学物理', teacher: '李教授', location: '物理系楼B203', weekday: 4, start_period: 3, end_period: 4 },
+      { course_id: 'course-lin-tue', name: '线性代数', teacher: '王教授', location: '数学楼C305', weekday: 2, start_period: 6, end_period: 7 },
+      { course_id: 'course-lin-fri', name: '线性代数', teacher: '王教授', location: '数学楼C305', weekday: 5, start_period: 6, end_period: 7 },
     ]
+    return mockCourses.filter(c => c.weekday === mockWeekday)
   }
 }
 
@@ -118,11 +123,16 @@ async function getNextCourse(userId: string) {
     const weekday = today.getDay() === 0 ? 7 : today.getDay()
     const hour = today.getHours()
     const minute = today.getMinutes()
-    const mockCourses = [
-      { course_id: 'course-math', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday, start_period: 1, end_period: 2 },
-      { course_id: 'course-physics', name: '大学物理', teacher: '李教授', location: '物理系楼B203', weekday, start_period: 3, end_period: 4 },
-      { course_id: 'course-linear-algebra', name: '线性代数', teacher: '王教授', location: '数学楼C305', weekday, start_period: 6, end_period: 7 },
+    const allMockCourses = [
+      { course_id: 'course-math-mon', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: 1, start_period: 1, end_period: 2 },
+      { course_id: 'course-math-wed', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: 3, start_period: 1, end_period: 2 },
+      { course_id: 'course-math-fri', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: 5, start_period: 1, end_period: 2 },
+      { course_id: 'course-phy-tue', name: '大学物理', teacher: '李教授', location: '物理系楼B203', weekday: 2, start_period: 3, end_period: 4 },
+      { course_id: 'course-phy-thu', name: '大学物理', teacher: '李教授', location: '物理系楼B203', weekday: 4, start_period: 3, end_period: 4 },
+      { course_id: 'course-lin-tue', name: '线性代数', teacher: '王教授', location: '数学楼C305', weekday: 2, start_period: 6, end_period: 7 },
+      { course_id: 'course-lin-fri', name: '线性代数', teacher: '王教授', location: '数学楼C305', weekday: 5, start_period: 6, end_period: 7 },
     ]
+    const mockCourses = allMockCourses.filter(c => c.weekday === weekday)
     for (const course of mockCourses) {
       const startTime = periodStartTimes.find(p => p.period === course.start_period)
       if (startTime) {
