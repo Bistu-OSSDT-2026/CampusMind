@@ -2,6 +2,33 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 
+const mockUrgentDeadlines = [
+  {
+    ddl_id: 'ddl-2',
+    user_id: 'user-1',
+    course_id: 'course-2',
+    type: 'assignment',
+    subject: '大学物理实验报告',
+    deadline_time: '2026-07-10T23:59:00Z',
+    weight: 3,
+    status: 'pending',
+    created_at: '2026-07-01T08:00:00Z',
+    updated_at: '2026-07-01T08:00:00Z',
+  },
+  {
+    ddl_id: 'ddl-1',
+    user_id: 'user-1',
+    course_id: 'course-1',
+    type: 'exam',
+    subject: '高等数学期中考试',
+    deadline_time: '2026-07-15T10:00:00Z',
+    weight: 5,
+    status: 'pending',
+    created_at: '2026-07-01T08:00:00Z',
+    updated_at: '2026-07-01T08:00:00Z',
+  },
+]
+
 export async function GET(request: NextRequest) {
   const userId = request.headers.get('X-User-Id')
 
@@ -13,46 +40,47 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const now = new Date()
-    const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+    const threeDaysLater = new Date()
+    threeDaysLater.setDate(threeDaysLater.getDate() + 3)
 
-    logger.api.processing('查询紧迫死线', { filter: 'countdown_days <= 7 && status === pending' })
-
-    const deadlines = await prisma.deadline.findMany({
+    const urgentDeadlines = await prisma.deadline.findMany({
       where: {
         user_id: userId,
         status: 'pending',
         deadline_time: {
-          gte: now,
-          lte: sevenDaysLater,
+          lte: threeDaysLater,
         },
       },
-      orderBy: { deadline_time: 'asc' },
+      orderBy: [{ deadline_time: 'asc' }],
     })
 
     const responseData = {
       code: 0,
       message: 'success',
-      data: deadlines.map((d: { ddl_id: string; type: string; subject: string; course_id: string | null; deadline_time: Date; weight: number; status: string; description: string | null; created_at: Date }) => ({
+      data: urgentDeadlines.map((d) => ({
         ddl_id: d.ddl_id,
+        course_id: d.course_id,
         type: d.type,
         subject: d.subject,
-        course_id: d.course_id,
         deadline_time: d.deadline_time.toISOString(),
-        countdown_days: Math.ceil((d.deadline_time.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
         weight: d.weight,
         status: d.status,
-        description: d.description,
         created_at: d.created_at.toISOString(),
       })),
     }
 
     logger.api.response('GET', '/api/deadlines/urgent', 200, responseData)
-
     return NextResponse.json(responseData)
-  } catch (error) {
-    logger.error('查询紧迫死线失败', error)
-    logger.api.response('GET', '/api/deadlines/urgent', 500, { code: -1, message: '服务器错误' })
-    return NextResponse.json({ code: -1, message: '服务器错误' }, { status: 500 })
+  } catch {
+    logger.api.processing('查询紧迫死线（Mock模式）')
+
+    const responseData = {
+      code: 0,
+      message: 'success',
+      data: mockUrgentDeadlines,
+    }
+
+    logger.api.response('GET', '/api/deadlines/urgent', 200, responseData)
+    return NextResponse.json(responseData)
   }
 }

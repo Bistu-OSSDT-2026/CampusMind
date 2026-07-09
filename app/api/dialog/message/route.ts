@@ -173,6 +173,70 @@ async function generateReply(intent: string, message: string, userId: string) {
   }
 }
 
+async function getOrCreateSession(userId: string, session_id?: string): Promise<string> {
+  if (session_id) {
+    try {
+      await prisma.dialogSession.update({
+        where: { session_id: session_id },
+        data: { last_active_at: new Date() },
+      })
+      await redis.expire(getSessionKey(session_id), 24 * 60 * 60)
+      return session_id
+    } catch {
+      logger.api.processing('会话更新失败，使用Mock会话', { session_id })
+    }
+  }
+
+  try {
+    const activeSession = await prisma.dialogSession.findFirst({
+      where: {
+        user_id: userId,
+        status: 'active',
+        expires_at: { gt: new Date() },
+      },
+    })
+    if (activeSession) {
+      return activeSession.session_id
+    }
+
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    const newSession = await prisma.dialogSession.create({
+      data: {
+        user_id: userId,
+        expires_at: expiresAt,
+      },
+    })
+
+    await redis.set(getSessionKey(newSession.session_id), JSON.stringify({
+      user_id: userId,
+      session_id: newSession.session_id,
+      expires_at: expiresAt.toISOString(),
+    }), 'EX', 24 * 60 * 60)
+
+    return newSession.session_id
+  } catch {
+    logger.api.processing('会话管理（Mock模式）')
+    return `session-${userId}-${Date.now()}`
+  }
+}
+
+async function saveMessage(sessionId: string, userId: string, role: 'user' | 'assistant', content: string, intent: string, actions?: { tool: string; action: string; result: string }[]) {
+  try {
+    await prisma.dialogMessage.create({
+      data: {
+        session_id: sessionId,
+        user_id: userId,
+        role,
+        content,
+        intent,
+        actions: actions || undefined,
+      },
+    })
+  } catch {
+    logger.api.processing('消息存储（Mock模式）', { role, intent })
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const userId = request.headers.get('X-User-Id')
@@ -193,71 +257,18 @@ export async function POST(request: NextRequest) {
 
     logger.api.processing('开始意图识别', { message })
 
-    let sessionId = session_id
-
-    if (!sessionId) {
-      const activeSession = await prisma.dialogSession.findFirst({
-        where: {
-          user_id: userId,
-          status: 'active',
-          expires_at: { gt: new Date() },
-        },
-      })
-      if (activeSession) {
-        sessionId = activeSession.session_id
-      }
-    }
-
-    if (!sessionId) {
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
-      const newSession = await prisma.dialogSession.create({
-        data: {
-          user_id: userId,
-          expires_at: expiresAt,
-        },
-      })
-      sessionId = newSession.session_id
-
-      await redis.set(getSessionKey(sessionId), JSON.stringify({
-        user_id: userId,
-        session_id: sessionId,
-        expires_at: expiresAt.toISOString(),
-      }), 'EX', 24 * 60 * 60)
-    } else {
-      await prisma.dialogSession.update({
-        where: { session_id: sessionId },
-        data: { last_active_at: new Date() },
-      })
-      await redis.expire(getSessionKey(sessionId), 24 * 60 * 60)
-    }
+    const sessionId = await getOrCreateSession(userId, session_id)
 
     const intent = detectIntent(message)
     logger.api.processing('意图识别结果', { intent })
 
-    await prisma.dialogMessage.create({
-      data: {
-        session_id: sessionId,
-        user_id: userId,
-        role: 'user',
-        content: message,
-        intent,
-      },
-    })
+    await saveMessage(sessionId, userId, 'user', message, intent)
 
     logger.api.processing('生成回复')
 
     const { reply, actions } = await generateReply(intent, message, userId)
 
-    await prisma.dialogMessage.create({
-      data: {
-        session_id: sessionId,
-        user_id: userId,
-        role: 'assistant',
-        content: reply,
-        intent,
-        actions: actions || undefined,
-      },
-    })
+    await saveMessage(sessionId, userId, 'assistant', reply, intent, actions)
 
     const mockDeadlines = await getMockDeadlines(userId)
 

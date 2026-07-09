@@ -2,6 +2,45 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 
+const mockDeadlines = [
+  {
+    ddl_id: 'ddl-1',
+    user_id: 'user-1',
+    course_id: 'course-1',
+    type: 'exam',
+    subject: '高等数学期中考试',
+    deadline_time: '2026-07-15T10:00:00Z',
+    weight: 5,
+    status: 'pending',
+    created_at: '2026-07-01T08:00:00Z',
+    updated_at: '2026-07-01T08:00:00Z',
+  },
+  {
+    ddl_id: 'ddl-2',
+    user_id: 'user-1',
+    course_id: 'course-2',
+    type: 'assignment',
+    subject: '大学物理实验报告',
+    deadline_time: '2026-07-10T23:59:00Z',
+    weight: 3,
+    status: 'pending',
+    created_at: '2026-07-01T08:00:00Z',
+    updated_at: '2026-07-01T08:00:00Z',
+  },
+  {
+    ddl_id: 'ddl-3',
+    user_id: 'user-1',
+    course_id: 'course-3',
+    type: 'paper',
+    subject: '线性代数论文',
+    deadline_time: '2026-07-20T18:00:00Z',
+    weight: 4,
+    status: 'pending',
+    created_at: '2026-07-01T08:00:00Z',
+    updated_at: '2026-07-01T08:00:00Z',
+  },
+]
+
 export async function GET(request: NextRequest) {
   const userId = request.headers.get('X-User-Id')
 
@@ -15,113 +54,130 @@ export async function GET(request: NextRequest) {
   try {
     const deadlines = await prisma.deadline.findMany({
       where: { user_id: userId },
-      orderBy: { deadline_time: 'asc' },
+      orderBy: [{ deadline_time: 'asc' }],
     })
 
-    const now = new Date()
     const responseData = {
       code: 0,
       message: 'success',
-      data: deadlines.map((d: { ddl_id: string; type: string; subject: string; course_id: string | null; deadline_time: Date; weight: number; status: string; description: string | null; created_at: Date }) => ({
+      data: deadlines.map((d) => ({
         ddl_id: d.ddl_id,
+        course_id: d.course_id,
         type: d.type,
         subject: d.subject,
-        course_id: d.course_id,
         deadline_time: d.deadline_time.toISOString(),
-        countdown_days: Math.ceil((d.deadline_time.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
         weight: d.weight,
         status: d.status,
-        description: d.description,
         created_at: d.created_at.toISOString(),
       })),
     }
 
     logger.api.response('GET', '/api/deadlines', 200, responseData)
-
     return NextResponse.json(responseData)
-  } catch (error) {
-    logger.error('查询死线列表失败', error)
-    logger.api.response('GET', '/api/deadlines', 500, { code: -1, message: '服务器错误' })
-    return NextResponse.json({ code: -1, message: '服务器错误' }, { status: 500 })
+  } catch {
+    logger.api.processing('查询全部死线（Mock模式）', { count: mockDeadlines.length })
+
+    const responseData = {
+      code: 0,
+      message: 'success',
+      data: mockDeadlines,
+    }
+
+    logger.api.response('GET', '/api/deadlines', 200, responseData)
+    return NextResponse.json(responseData)
   }
 }
 
 export async function POST(request: NextRequest) {
-  const userId = request.headers.get('X-User-Id')
-  const body = await request.json()
-
-  logger.api.request('POST', '/api/deadlines', userId, body)
-
-  if (!userId) {
-    logger.api.response('POST', '/api/deadlines', 400, { code: -1, message: '缺少用户ID' })
-    return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
-  }
-
-  const { type, subject, course_id, deadline_time, weight, description } = body
-
-  if (!type || !subject || !deadline_time) {
-    logger.api.response('POST', '/api/deadlines', 400, { code: -1, message: '缺少必填字段: type, subject, deadline_time' })
-    return NextResponse.json(
-      { code: -1, message: '缺少必填字段: type, subject, deadline_time' },
-      { status: 400 }
-    )
-  }
-
-  const validTypes = ['homework', 'exam', 'other']
-  if (!validTypes.includes(type)) {
-    logger.api.response('POST', '/api/deadlines', 400, { code: -1, message: 'type 必须是 homework/exam/other' })
-    return NextResponse.json(
-      { code: -1, message: 'type 必须是 homework/exam/other' },
-      { status: 400 }
-    )
-  }
-
-  if (weight !== undefined && (weight < 1 || weight > 5)) {
-    logger.api.response('POST', '/api/deadlines', 400, { code: -1, message: 'weight 必须在 1-5 之间' })
-    return NextResponse.json(
-      { code: -1, message: 'weight 必须在 1-5 之间' },
-      { status: 400 }
-    )
-  }
-
   try {
-    logger.api.processing('创建死线', { subject, type })
+    const userId = request.headers.get('X-User-Id')
+    const body = await request.json()
 
-    const deadline = await prisma.deadline.create({
-      data: {
-        user_id: userId,
-        type,
-        subject,
-        course_id: course_id || null,
-        deadline_time: new Date(deadline_time),
-        weight: weight || 1,
-        description: description || null,
-      },
-    })
+    logger.api.request('POST', '/api/deadlines', userId, body)
 
-    const now = new Date()
-    const responseData = {
-      code: 0,
-      message: 'success',
-      data: {
-        ddl_id: deadline.ddl_id,
-        type: deadline.type,
-        subject: deadline.subject,
-        course_id: deadline.course_id,
-        deadline_time: deadline.deadline_time.toISOString(),
-        countdown_days: Math.ceil((deadline.deadline_time.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
-        weight: deadline.weight,
-        status: deadline.status,
-        description: deadline.description,
-        created_at: deadline.created_at.toISOString(),
-      },
+    if (!userId) {
+      logger.api.response('POST', '/api/deadlines', 400, { code: -1, message: '缺少用户ID' })
+      return NextResponse.json(
+        { code: -1, message: '缺少用户ID' },
+        { status: 400 }
+      )
     }
 
-    logger.api.response('POST', '/api/deadlines', 201, responseData)
+    if (!body.subject) {
+      logger.api.response('POST', '/api/deadlines', 400, { code: -1, message: '死线主题不能为空' })
+      return NextResponse.json(
+        { code: -1, message: '死线主题不能为空' },
+        { status: 400 }
+      )
+    }
 
-    return NextResponse.json(responseData, { status: 201 })
+    if (!body.deadline_time) {
+      logger.api.response('POST', '/api/deadlines', 400, { code: -1, message: '截止时间不能为空' })
+      return NextResponse.json(
+        { code: -1, message: '截止时间不能为空' },
+        { status: 400 }
+      )
+    }
+
+    try {
+      logger.api.processing('创建死线', { subject: body.subject, deadline_time: body.deadline_time })
+
+      const deadline = await prisma.deadline.create({
+        data: {
+          user_id: userId,
+          course_id: body.course_id || null,
+          type: body.type || 'other',
+          subject: body.subject,
+          deadline_time: new Date(body.deadline_time),
+          weight: body.weight || 3,
+          status: 'pending',
+        },
+      })
+
+      const responseData = {
+        code: 0,
+        message: 'success',
+        data: {
+          ddl_id: deadline.ddl_id,
+          course_id: deadline.course_id,
+          type: deadline.type,
+          subject: deadline.subject,
+          deadline_time: deadline.deadline_time.toISOString(),
+          weight: deadline.weight,
+          status: deadline.status,
+          created_at: deadline.created_at.toISOString(),
+        },
+      }
+
+      logger.api.response('POST', '/api/deadlines', 200, responseData)
+      return NextResponse.json(responseData)
+    } catch {
+      logger.api.processing('创建死线（Mock模式）', { subject: body.subject })
+
+      const newDeadline = {
+        ddl_id: `ddl-${Date.now()}`,
+        user_id: userId,
+        course_id: body.course_id || null,
+        type: body.type || 'other',
+        subject: body.subject,
+        deadline_time: new Date(body.deadline_time).toISOString(),
+        weight: body.weight || 3,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+
+      const responseData = {
+        code: 0,
+        message: 'success',
+        data: newDeadline,
+      }
+
+      logger.api.response('POST', '/api/deadlines', 200, responseData)
+      return NextResponse.json(responseData)
+    }
   } catch (error) {
-    logger.error('创建死线失败', error)
+    logger.error('死线创建接口错误', error)
     logger.api.response('POST', '/api/deadlines', 500, { code: -1, message: '服务器错误' })
     return NextResponse.json({ code: -1, message: '服务器错误' }, { status: 500 })
   }

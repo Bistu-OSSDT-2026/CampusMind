@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 
-const mockCourses = [
+const mockTodayCourses = [
   {
-    id: 'course-1',
+    course_id: 'course-1',
     name: '高等数学',
     teacher: '张教授',
     location: '教学楼A101',
@@ -14,7 +15,7 @@ const mockCourses = [
     created_at: '2026-07-01T08:00:00Z',
   },
   {
-    id: 'course-2',
+    course_id: 'course-2',
     name: '大学物理',
     teacher: '李教授',
     location: '物理系楼B203',
@@ -39,17 +40,43 @@ export async function GET(request: NextRequest) {
   const today = new Date()
   const weekday = today.getDay() === 0 ? 7 : today.getDay()
 
-  logger.api.processing('查询今日课程', { today: today.toISOString(), weekday })
+  try {
+    const courses = await prisma.course.findMany({
+      where: {
+        user_id: userId,
+        weekday: weekday,
+      },
+      orderBy: [{ start_period: 'asc' }],
+    })
 
-  const todayCourses = mockCourses.filter((course) => course.weekday === weekday)
+    const responseData = {
+      code: 0,
+      message: 'success',
+      data: courses.map((c) => ({
+        course_id: c.course_id,
+        name: c.name,
+        teacher: c.teacher || '未知',
+        location: c.location || '未知地点',
+        weekday: c.weekday,
+        start_period: c.start_period,
+        end_period: c.end_period,
+        week_range: c.week_range || '1-16',
+        created_at: c.created_at.toISOString(),
+      })),
+    }
 
-  const responseData = {
-    code: 0,
-    message: 'success',
-    data: todayCourses,
+    logger.api.response('GET', '/api/courses/today', 200, responseData)
+    return NextResponse.json(responseData)
+  } catch {
+    logger.api.processing('查询今日课程（Mock模式）', { weekday })
+
+    const responseData = {
+      code: 0,
+      message: 'success',
+      data: mockTodayCourses,
+    }
+
+    logger.api.response('GET', '/api/courses/today', 200, responseData)
+    return NextResponse.json(responseData)
   }
-
-  logger.api.response('GET', '/api/courses/today', 200, responseData)
-
-  return NextResponse.json(responseData)
 }

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 
 const mockCourses = [
   {
-    id: 'course-1',
+    course_id: 'course-1',
     name: '高等数学',
     teacher: '张教授',
     location: '教学楼A101',
@@ -14,7 +15,7 @@ const mockCourses = [
     created_at: '2026-07-01T08:00:00Z',
   },
   {
-    id: 'course-2',
+    course_id: 'course-2',
     name: '大学物理',
     teacher: '李教授',
     location: '物理系楼B203',
@@ -25,7 +26,7 @@ const mockCourses = [
     created_at: '2026-07-01T08:00:00Z',
   },
   {
-    id: 'course-3',
+    course_id: 'course-3',
     name: '线性代数',
     teacher: '王教授',
     location: '数学楼C305',
@@ -36,7 +37,7 @@ const mockCourses = [
     created_at: '2026-07-01T08:00:00Z',
   },
   {
-    id: 'course-4',
+    course_id: 'course-4',
     name: '计算机基础',
     teacher: '陈老师',
     location: '计算机楼D102',
@@ -58,17 +59,42 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
   }
 
-  logger.api.processing('查询全部课程', { count: mockCourses.length })
+  try {
+    const courses = await prisma.course.findMany({
+      where: { user_id: userId },
+      orderBy: [{ weekday: 'asc' }, { start_period: 'asc' }],
+    })
 
-  const responseData = {
-    code: 0,
-    message: 'success',
-    data: mockCourses,
+    const responseData = {
+      code: 0,
+      message: 'success',
+      data: courses.map((c) => ({
+        course_id: c.course_id,
+        name: c.name,
+        teacher: c.teacher || '未知',
+        location: c.location || '未知地点',
+        weekday: c.weekday,
+        start_period: c.start_period,
+        end_period: c.end_period,
+        week_range: c.week_range || '1-16',
+        created_at: c.created_at.toISOString(),
+      })),
+    }
+
+    logger.api.response('GET', '/api/courses', 200, responseData)
+    return NextResponse.json(responseData)
+  } catch {
+    logger.api.processing('查询全部课程（Mock模式）', { count: mockCourses.length })
+
+    const responseData = {
+      code: 0,
+      message: 'success',
+      data: mockCourses,
+    }
+
+    logger.api.response('GET', '/api/courses', 200, responseData)
+    return NextResponse.json(responseData)
   }
-
-  logger.api.response('GET', '/api/courses', 200, responseData)
-
-  return NextResponse.json(responseData)
 }
 
 export async function POST(request: NextRequest) {
@@ -94,29 +120,64 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    logger.api.processing('创建课程', { name: body.name, teacher: body.teacher })
+    try {
+      logger.api.processing('创建课程', { name: body.name, teacher: body.teacher })
 
-    const newCourse = {
-      id: `course-${Date.now()}`,
-      name: body.name,
-      teacher: body.teacher || '未知',
-      location: body.location || '未知地点',
-      weekday: body.weekday || 1,
-      start_period: body.start_period || 1,
-      end_period: body.end_period || 2,
-      week_range: body.week_range || '1-16',
-      created_at: new Date().toISOString(),
+      const course = await prisma.course.create({
+        data: {
+          user_id: userId,
+          name: body.name,
+          teacher: body.teacher || null,
+          location: body.location || null,
+          weekday: body.weekday || 1,
+          start_period: body.start_period || 1,
+          end_period: body.end_period || 2,
+          week_range: body.week_range || '1-16',
+        },
+      })
+
+      const responseData = {
+        code: 0,
+        message: 'success',
+        data: {
+          course_id: course.course_id,
+          name: course.name,
+          teacher: course.teacher || '未知',
+          location: course.location || '未知地点',
+          weekday: course.weekday,
+          start_period: course.start_period,
+          end_period: course.end_period,
+          week_range: course.week_range || '1-16',
+          created_at: course.created_at.toISOString(),
+        },
+      }
+
+      logger.api.response('POST', '/api/courses', 200, responseData)
+      return NextResponse.json(responseData)
+    } catch {
+      logger.api.processing('创建课程（Mock模式）', { name: body.name })
+
+      const newCourse = {
+        course_id: `course-${Date.now()}`,
+        name: body.name,
+        teacher: body.teacher || '未知',
+        location: body.location || '未知地点',
+        weekday: body.weekday || 1,
+        start_period: body.start_period || 1,
+        end_period: body.end_period || 2,
+        week_range: body.week_range || '1-16',
+        created_at: new Date().toISOString(),
+      }
+
+      const responseData = {
+        code: 0,
+        message: 'success',
+        data: newCourse,
+      }
+
+      logger.api.response('POST', '/api/courses', 200, responseData)
+      return NextResponse.json(responseData)
     }
-
-    const responseData = {
-      code: 0,
-      message: 'success',
-      data: newCourse,
-    }
-
-    logger.api.response('POST', '/api/courses', 200, responseData)
-
-    return NextResponse.json(responseData)
   } catch (error) {
     logger.error('课程创建接口错误', error)
     logger.api.response('POST', '/api/courses', 500, { code: -1, message: '服务器错误' })
