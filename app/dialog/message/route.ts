@@ -57,7 +57,7 @@ async function getMockDeadlines(userId: string) {
       take: 5,
     })
     return deadlines.map(d => ({
-      id: d.ddl_id,
+      ddl_id: d.ddl_id,
       type: d.type,
       subject: d.subject,
       deadline_time: d.deadline_time.toISOString(),
@@ -67,7 +67,7 @@ async function getMockDeadlines(userId: string) {
   } catch {
     return [
       {
-        id: 'deadline-1',
+        ddl_id: 'deadline-1',
         type: 'homework' as const,
         subject: '高数作业 P132',
         deadline_time: new Date(Date.now() + 86400000).toISOString(),
@@ -75,7 +75,7 @@ async function getMockDeadlines(userId: string) {
         status: 'pending' as const,
       },
       {
-        id: 'deadline-2',
+        ddl_id: 'deadline-2',
         type: 'homework' as const,
         subject: '物理实验报告',
         deadline_time: new Date(Date.now() + 172800000).toISOString(),
@@ -83,7 +83,7 @@ async function getMockDeadlines(userId: string) {
         status: 'pending' as const,
       },
       {
-        id: 'deadline-3',
+        ddl_id: 'deadline-3',
         type: 'exam' as const,
         subject: '高数考试',
         deadline_time: new Date(Date.now() + 4 * 86400000).toISOString(),
@@ -174,25 +174,25 @@ async function generateReply(intent: string, message: string, userId: string) {
 }
 
 export async function POST(request: NextRequest) {
+  const userId = request.headers.get('X-User-Id')
+  const body = await request.json()
+  const { message, session_id } = body
+
+  logger.api.request('POST', '/dialog/message', userId, { message, session_id })
+
+  if (!userId) {
+    logger.api.response('POST', '/dialog/message', 400, { code: -1, message: '缺少用户ID' })
+    return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
+  }
+
+  if (!message) {
+    logger.api.response('POST', '/dialog/message', 400, { code: -1, message: '消息内容不能为空' })
+    return NextResponse.json({ code: -1, message: '消息内容不能为空' }, { status: 400 })
+  }
+
+  logger.api.processing('开始意图识别', { message })
+
   try {
-    const userId = request.headers.get('X-User-Id')
-    const body = await request.json()
-    const { message, session_id } = body
-
-    logger.api.request('POST', '/api/dialog/message', userId, { message, session_id })
-
-    if (!userId) {
-      logger.api.response('POST', '/api/dialog/message', 400, { code: -1, message: '缺少用户ID' })
-      return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
-    }
-
-    if (!message) {
-      logger.api.response('POST', '/api/dialog/message', 400, { code: -1, message: '消息内容不能为空' })
-      return NextResponse.json({ code: -1, message: '消息内容不能为空' }, { status: 400 })
-    }
-
-    logger.api.processing('开始意图识别', { message })
-
     let sessionId = session_id
 
     if (!sessionId) {
@@ -273,12 +273,30 @@ export async function POST(request: NextRequest) {
       },
     }
 
-    logger.api.response('POST', '/api/dialog/message', 200, responseData)
+    logger.api.response('POST', '/dialog/message', 200, responseData)
 
     return NextResponse.json(responseData)
-  } catch (error) {
-    logger.error('对话接口错误', error)
-    logger.api.response('POST', '/api/dialog/message', 500, { code: -1, message: '服务器错误' })
-    return NextResponse.json({ code: -1, message: '服务器错误' }, { status: 500 })
+  } catch {
+    logger.api.processing('对话接口（Mock模式）')
+
+    const mockSessionId = session_id || `session-${Date.now()}`
+    const intent = detectIntent(message)
+    const { reply, actions } = await generateReply(intent, message, userId)
+    const mockDeadlines = await getMockDeadlines(userId)
+
+    const responseData = {
+      code: 0,
+      message: 'success',
+      data: {
+        session_id: mockSessionId,
+        reply,
+        intent,
+        actions,
+        urgent_deadline: mockDeadlines[0],
+      },
+    }
+
+    logger.api.response('POST', '/dialog/message', 200, responseData)
+    return NextResponse.json(responseData)
   }
 }

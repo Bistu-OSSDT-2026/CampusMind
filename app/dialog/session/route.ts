@@ -6,10 +6,10 @@ import { logger } from '@/lib/logger'
 export async function GET(request: NextRequest) {
   const userId = request.headers.get('X-User-Id')
 
-  logger.api.request('GET', '/api/dialog/session', userId)
+  logger.api.request('GET', '/dialog/session', userId)
 
   if (!userId) {
-    logger.api.response('GET', '/api/dialog/session', 400, { code: -1, message: '缺少用户ID' })
+    logger.api.response('GET', '/dialog/session', 400, { code: -1, message: '缺少用户ID' })
     return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
   }
 
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         message: 'success',
         data: null,
       }
-      logger.api.response('GET', '/api/dialog/session', 200, responseData)
+      logger.api.response('GET', '/dialog/session', 200, responseData)
       return NextResponse.json(responseData)
     }
 
@@ -45,13 +45,19 @@ export async function GET(request: NextRequest) {
       },
     }
 
-    logger.api.response('GET', '/api/dialog/session', 200, responseData)
+    logger.api.response('GET', '/dialog/session', 200, responseData)
 
     return NextResponse.json(responseData)
-  } catch (error) {
-    logger.error('查询会话状态失败', error)
-    logger.api.response('GET', '/api/dialog/session', 500, { code: -1, message: '服务器错误' })
-    return NextResponse.json({ code: -1, message: '服务器错误' }, { status: 500 })
+  } catch {
+    logger.api.processing('查询会话状态（Mock模式）')
+
+    const responseData = {
+      code: 0,
+      message: 'success',
+      data: null,
+    }
+    logger.api.response('GET', '/dialog/session', 200, responseData)
+    return NextResponse.json(responseData)
   }
 }
 
@@ -60,10 +66,10 @@ export async function DELETE(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const sessionId = searchParams.get('session_id')
 
-  logger.api.request('DELETE', '/api/dialog/session', userId, { session_id: sessionId })
+  logger.api.request('DELETE', '/dialog/session', userId, { session_id: sessionId })
 
   if (!userId) {
-    logger.api.response('DELETE', '/api/dialog/session', 400, { code: -1, message: '缺少用户ID' })
+    logger.api.response('DELETE', '/dialog/session', 400, { code: -1, message: '缺少用户ID' })
     return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
   }
 
@@ -75,12 +81,12 @@ export async function DELETE(request: NextRequest) {
       })
 
       if (!sessionToEnd) {
-        logger.api.response('DELETE', '/api/dialog/session', 404, { code: -1, message: '会话不存在' })
+        logger.api.response('DELETE', '/dialog/session', 404, { code: -1, message: '会话不存在' })
         return NextResponse.json({ code: -1, message: '会话不存在' }, { status: 404 })
       }
 
       if (sessionToEnd.user_id !== userId) {
-        logger.api.response('DELETE', '/api/dialog/session', 403, { code: -1, message: '无权结束会话' })
+        logger.api.response('DELETE', '/dialog/session', 403, { code: -1, message: '无权结束会话' })
         return NextResponse.json({ code: -1, message: '无权结束会话' }, { status: 403 })
       }
     } else {
@@ -93,7 +99,7 @@ export async function DELETE(request: NextRequest) {
       })
 
       if (!sessionToEnd) {
-        logger.api.response('DELETE', '/api/dialog/session', 404, { code: -1, message: '没有活跃会话' })
+        logger.api.response('DELETE', '/dialog/session', 404, { code: -1, message: '没有活跃会话' })
         return NextResponse.json({ code: -1, message: '没有活跃会话' }, { status: 404 })
       }
     }
@@ -113,12 +119,19 @@ export async function DELETE(request: NextRequest) {
       data: null,
     }
 
-    logger.api.response('DELETE', '/api/dialog/session', 200, responseData)
+    logger.api.response('DELETE', '/dialog/session', 200, responseData)
 
     return NextResponse.json(responseData)
-  } catch (error) {
-    logger.error('结束会话失败', error)
-    logger.api.response('DELETE', '/api/dialog/session', 500, { code: -1, message: '服务器错误' })
-    return NextResponse.json({ code: -1, message: '服务器错误' }, { status: 500 })
+  } catch {
+    logger.api.processing('结束会话（Mock模式）')
+
+    const responseData = {
+      code: 0,
+      message: 'success',
+      data: null,
+    }
+
+    logger.api.response('DELETE', '/dialog/session', 200, responseData)
+    return NextResponse.json(responseData)
   }
 }

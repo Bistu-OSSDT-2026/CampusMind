@@ -2,13 +2,42 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 
+const mockDeadlines = [
+  {
+    ddl_id: 'ddl-1',
+    user_id: 'user-1',
+    course_id: 'course-1',
+    type: 'homework',
+    subject: '高等数学作业',
+    deadline_time: new Date(Date.now() + 2 * 86400000).toISOString(),
+    weight: 3,
+    status: 'pending',
+    description: '完成第三章习题',
+    created_at: '2026-07-01T08:00:00Z',
+    countdown_days: 2,
+  },
+  {
+    ddl_id: 'ddl-2',
+    user_id: 'user-1',
+    course_id: 'course-2',
+    type: 'exam',
+    subject: '大学物理期中考试',
+    deadline_time: new Date(Date.now() + 5 * 86400000).toISOString(),
+    weight: 5,
+    status: 'pending',
+    description: null,
+    created_at: '2026-07-01T08:00:00Z',
+    countdown_days: 5,
+  },
+]
+
 export async function GET(request: NextRequest) {
   const userId = request.headers.get('X-User-Id')
 
-  logger.api.request('GET', '/api/deadlines', userId)
+  logger.api.request('GET', '/deadlines', userId)
 
   if (!userId) {
-    logger.api.response('GET', '/api/deadlines', 400, { code: -1, message: '缺少用户ID' })
+    logger.api.response('GET', '/deadlines', 400, { code: -1, message: '缺少用户ID' })
     return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
   }
 
@@ -22,7 +51,7 @@ export async function GET(request: NextRequest) {
     const responseData = {
       code: 0,
       message: 'success',
-      data: deadlines.map((d: { ddl_id: string; type: string; subject: string; course_id: string | null; deadline_time: Date; weight: number; status: string; description: string | null; created_at: Date }) => ({
+      data: deadlines.map((d) => ({
         ddl_id: d.ddl_id,
         type: d.type,
         subject: d.subject,
@@ -36,13 +65,20 @@ export async function GET(request: NextRequest) {
       })),
     }
 
-    logger.api.response('GET', '/api/deadlines', 200, responseData)
+    logger.api.response('GET', '/deadlines', 200, responseData)
 
     return NextResponse.json(responseData)
-  } catch (error) {
-    logger.error('查询死线列表失败', error)
-    logger.api.response('GET', '/api/deadlines', 500, { code: -1, message: '服务器错误' })
-    return NextResponse.json({ code: -1, message: '服务器错误' }, { status: 500 })
+  } catch {
+    logger.api.processing('查询死线列表（Mock模式）')
+
+    const responseData = {
+      code: 0,
+      message: 'success',
+      data: mockDeadlines,
+    }
+
+    logger.api.response('GET', '/deadlines', 200, responseData)
+    return NextResponse.json(responseData)
   }
 }
 
@@ -50,17 +86,17 @@ export async function POST(request: NextRequest) {
   const userId = request.headers.get('X-User-Id')
   const body = await request.json()
 
-  logger.api.request('POST', '/api/deadlines', userId, body)
+  logger.api.request('POST', '/deadlines', userId, body)
 
   if (!userId) {
-    logger.api.response('POST', '/api/deadlines', 400, { code: -1, message: '缺少用户ID' })
+    logger.api.response('POST', '/deadlines', 400, { code: -1, message: '缺少用户ID' })
     return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
   }
 
   const { type, subject, course_id, deadline_time, weight, description } = body
 
   if (!type || !subject || !deadline_time) {
-    logger.api.response('POST', '/api/deadlines', 400, { code: -1, message: '缺少必填字段: type, subject, deadline_time' })
+    logger.api.response('POST', '/deadlines', 400, { code: -1, message: '缺少必填字段: type, subject, deadline_time' })
     return NextResponse.json(
       { code: -1, message: '缺少必填字段: type, subject, deadline_time' },
       { status: 400 }
@@ -69,7 +105,7 @@ export async function POST(request: NextRequest) {
 
   const validTypes = ['homework', 'exam', 'other']
   if (!validTypes.includes(type)) {
-    logger.api.response('POST', '/api/deadlines', 400, { code: -1, message: 'type 必须是 homework/exam/other' })
+    logger.api.response('POST', '/deadlines', 400, { code: -1, message: 'type 必须是 homework/exam/other' })
     return NextResponse.json(
       { code: -1, message: 'type 必须是 homework/exam/other' },
       { status: 400 }
@@ -77,7 +113,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (weight !== undefined && (weight < 1 || weight > 5)) {
-    logger.api.response('POST', '/api/deadlines', 400, { code: -1, message: 'weight 必须在 1-5 之间' })
+    logger.api.response('POST', '/deadlines', 400, { code: -1, message: 'weight 必须在 1-5 之间' })
     return NextResponse.json(
       { code: -1, message: 'weight 必须在 1-5 之间' },
       { status: 400 }
@@ -117,12 +153,31 @@ export async function POST(request: NextRequest) {
       },
     }
 
-    logger.api.response('POST', '/api/deadlines', 201, responseData)
+    logger.api.response('POST', '/deadlines', 201, responseData)
 
     return NextResponse.json(responseData, { status: 201 })
-  } catch (error) {
-    logger.error('创建死线失败', error)
-    logger.api.response('POST', '/api/deadlines', 500, { code: -1, message: '服务器错误' })
-    return NextResponse.json({ code: -1, message: '服务器错误' }, { status: 500 })
+  } catch {
+    logger.api.processing('创建死线（Mock模式）')
+
+    const now = new Date()
+    const responseData = {
+      code: 0,
+      message: 'success',
+      data: {
+        ddl_id: `ddl-${Date.now()}`,
+        type,
+        subject,
+        course_id: course_id || null,
+        deadline_time: new Date(deadline_time).toISOString(),
+        countdown_days: Math.ceil((new Date(deadline_time).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+        weight: weight || 1,
+        status: 'pending',
+        description: description || null,
+        created_at: now.toISOString(),
+      },
+    }
+
+    logger.api.response('POST', '/deadlines', 201, responseData)
+    return NextResponse.json(responseData, { status: 201 })
   }
 }

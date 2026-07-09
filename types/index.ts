@@ -14,7 +14,7 @@ export interface ToolAction {
 }
 
 export interface Course {
-  id: string
+  course_id: string
   name: string
   teacher?: string
   location?: string
@@ -26,7 +26,7 @@ export interface Course {
 }
 
 export interface Deadline {
-  id: string
+  ddl_id: string
   type: 'homework' | 'exam' | 'other'
   subject: string
   course_id?: string
@@ -39,7 +39,7 @@ export interface Deadline {
 }
 
 export interface Plan {
-  id: string
+  plan_id: string
   subject: string
   exam_date: string
   status: 'draft' | 'active' | 'completed' | 'canceled'
@@ -49,7 +49,7 @@ export interface Plan {
 }
 
 export interface DailyTask {
-  id: string
+  task_id: string
   date: string
   knowledge_points: string[]
   time_slot?: string

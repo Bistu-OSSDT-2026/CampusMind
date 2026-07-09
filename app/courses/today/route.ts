@@ -3,7 +3,7 @@ import { logger } from '@/lib/logger'
 
 const mockCourses = [
   {
-    id: 'course-1',
+    course_id: 'course-1',
     name: '高等数学',
     teacher: '张教授',
     location: '教学楼A101',
@@ -14,7 +14,7 @@ const mockCourses = [
     created_at: '2026-07-01T08:00:00Z',
   },
   {
-    id: 'course-2',
+    course_id: 'course-2',
     name: '大学物理',
     teacher: '李教授',
     location: '物理系楼B203',
@@ -29,10 +29,10 @@ const mockCourses = [
 export async function GET(request: NextRequest) {
   const userId = request.headers.get('X-User-Id')
 
-  logger.api.request('GET', '/api/courses/today', userId)
+  logger.api.request('GET', '/courses/today', userId)
 
   if (!userId) {
-    logger.api.response('GET', '/api/courses/today', 400, { code: -1, message: '缺少用户ID' })
+    logger.api.response('GET', '/courses/today', 400, { code: -1, message: '缺少用户ID' })
     return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
   }
 
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     data: todayCourses,
   }
 
-  logger.api.response('GET', '/api/courses/today', 200, responseData)
+  logger.api.response('GET', '/courses/today', 200, responseData)
 
   return NextResponse.json(responseData)
 }

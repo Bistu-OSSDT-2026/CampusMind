@@ -188,7 +188,7 @@ export function Sidebar({ todayCourses, urgentDeadlines, onQuickAction }: Sideba
             <div className="space-y-2">
               {todayCourses.map((course) => (
                 <div
-                  key={course.id}
+                  key={course.course_id}
                   className="p-3 bg-primary-50/50 rounded-xl hover:bg-primary-50 transition-colors cursor-pointer border border-primary-100/50"
                 >
                   <div className="flex items-start justify-between">
@@ -238,18 +238,18 @@ export function Sidebar({ todayCourses, urgentDeadlines, onQuickAction }: Sideba
             <div className="space-y-2">
               {urgentDeadlines.map((deadline) => {
                 const dn = getDnLabel(deadline.countdown_days)
-                const isExpanded = expandedDeadline === deadline.id
+                const isExpanded = expandedDeadline === deadline.ddl_id
                 const isCompleted = deadline.status === 'completed'
 
                 return (
                   <div
-                    key={deadline.id}
+                    key={deadline.ddl_id}
                     className={`rounded-xl transition-all duration-200 cursor-pointer overflow-hidden ${
                       isCompleted
                         ? 'bg-gray-50 opacity-60'
                         : `${deadlineTypeBgColors[deadline.type]} border hover:shadow-md hover:-translate-y-0.5`
                     }`}
-                    onClick={() => setExpandedDeadline(isExpanded ? null : deadline.id)}
+                    onClick={() => setExpandedDeadline(isExpanded ? null : deadline.ddl_id)}
                   >
                     <div className="p-3">
                       <div className="flex items-start justify-between">
@@ -283,12 +283,12 @@ export function Sidebar({ todayCourses, urgentDeadlines, onQuickAction }: Sideba
                               className={`w-2 h-2 rounded-full transition-all duration-300 ${
                                 i < deadline.weight ? 'bg-primary-400' : 'bg-gray-200'
                               }`}
-                              onMouseEnter={() => setHoveredProgress(deadline.id)}
+                              onMouseEnter={() => setHoveredProgress(deadline.ddl_id)}
                               onMouseLeave={() => setHoveredProgress(null)}
                             />
                           ))}
                           <div className="relative ml-2">
-                            {hoveredProgress === deadline.id && (
+                            {hoveredProgress === deadline.ddl_id && (
                               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-800 text-white text-xs rounded-md whitespace-nowrap z-30">
                                 已完成 {deadline.weight}/5 个小步骤
                               </div>

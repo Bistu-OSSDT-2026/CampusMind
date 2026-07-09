@@ -3,7 +3,7 @@ import { logger } from '@/lib/logger'
 
 const mockCourses = [
   {
-    id: 'course-1',
+    course_id: 'course-1',
     name: '高等数学',
     teacher: '张教授',
     location: '教学楼A101',
@@ -14,7 +14,7 @@ const mockCourses = [
     created_at: '2026-07-01T08:00:00Z',
   },
   {
-    id: 'course-2',
+    course_id: 'course-2',
     name: '大学物理',
     teacher: '李教授',
     location: '物理系楼B203',
@@ -25,7 +25,7 @@ const mockCourses = [
     created_at: '2026-07-01T08:00:00Z',
   },
   {
-    id: 'course-3',
+    course_id: 'course-3',
     name: '线性代数',
     teacher: '王教授',
     location: '数学楼C305',
@@ -36,7 +36,7 @@ const mockCourses = [
     created_at: '2026-07-01T08:00:00Z',
   },
   {
-    id: 'course-4',
+    course_id: 'course-4',
     name: '计算机基础',
     teacher: '陈老师',
     location: '计算机楼D102',
@@ -51,10 +51,10 @@ const mockCourses = [
 export async function GET(request: NextRequest) {
   const userId = request.headers.get('X-User-Id')
 
-  logger.api.request('GET', '/api/courses', userId)
+  logger.api.request('GET', '/courses', userId)
 
   if (!userId) {
-    logger.api.response('GET', '/api/courses', 400, { code: -1, message: '缺少用户ID' })
+    logger.api.response('GET', '/courses', 400, { code: -1, message: '缺少用户ID' })
     return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
   }
 
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     data: mockCourses,
   }
 
-  logger.api.response('GET', '/api/courses', 200, responseData)
+  logger.api.response('GET', '/courses', 200, responseData)
 
   return NextResponse.json(responseData)
 }
@@ -76,10 +76,10 @@ export async function POST(request: NextRequest) {
     const userId = request.headers.get('X-User-Id')
     const body = await request.json()
 
-    logger.api.request('POST', '/api/courses', userId, body)
+    logger.api.request('POST', '/courses', userId, body)
 
     if (!userId) {
-      logger.api.response('POST', '/api/courses', 400, { code: -1, message: '缺少用户ID' })
+      logger.api.response('POST', '/courses', 400, { code: -1, message: '缺少用户ID' })
       return NextResponse.json(
         { code: -1, message: '缺少用户ID' },
         { status: 400 }
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!body.name) {
-      logger.api.response('POST', '/api/courses', 400, { code: -1, message: '课程名称不能为空' })
+      logger.api.response('POST', '/courses', 400, { code: -1, message: '课程名称不能为空' })
       return NextResponse.json(
         { code: -1, message: '课程名称不能为空' },
         { status: 400 }
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
     logger.api.processing('创建课程', { name: body.name, teacher: body.teacher })
 
     const newCourse = {
-      id: `course-${Date.now()}`,
+      course_id: `course-${Date.now()}`,
       name: body.name,
       teacher: body.teacher || '未知',
       location: body.location || '未知地点',
@@ -114,12 +114,12 @@ export async function POST(request: NextRequest) {
       data: newCourse,
     }
 
-    logger.api.response('POST', '/api/courses', 200, responseData)
+    logger.api.response('POST', '/courses', 200, responseData)
 
     return NextResponse.json(responseData)
   } catch (error) {
     logger.error('课程创建接口错误', error)
-    logger.api.response('POST', '/api/courses', 500, { code: -1, message: '服务器错误' })
+    logger.api.response('POST', '/courses', 500, { code: -1, message: '服务器错误' })
     return NextResponse.json({ code: -1, message: '服务器错误' }, { status: 500 })
   }
 }

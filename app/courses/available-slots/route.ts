@@ -61,10 +61,10 @@ const weekdayLabels = ['', '周一', '周二', '周三', '周四', '周五', '�
 export async function GET(request: NextRequest) {
   const userId = request.headers.get('X-User-Id')
 
-  logger.api.request('GET', '/api/courses/available-slots', userId)
+  logger.api.request('GET', '/courses/available-slots', userId)
 
   if (!userId) {
-    logger.api.response('GET', '/api/courses/available-slots', 400, { code: -1, message: '缺少用户ID' })
+    logger.api.response('GET', '/courses/available-slots', 400, { code: -1, message: '缺少用户ID' })
     return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
   }
 
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
       data: availableSlots,
     }
 
-    logger.api.response('GET', '/api/courses/available-slots', 200, responseData)
+    logger.api.response('GET', '/courses/available-slots', 200, responseData)
     return NextResponse.json(responseData)
   } catch {
     logger.api.processing('查询可用时段（Mock模式）')
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
       data: mockAvailableSlots,
     }
 
-    logger.api.response('GET', '/api/courses/available-slots', 200, responseData)
+    logger.api.response('GET', '/courses/available-slots', 200, responseData)
     return NextResponse.json(responseData)
   }
 }

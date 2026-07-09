@@ -2,14 +2,28 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 
+const mockDeadline = {
+  ddl_id: 'ddl-1',
+  user_id: 'user-1',
+  course_id: 'course-1',
+  type: 'homework',
+  subject: '高等数学作业',
+  deadline_time: new Date(Date.now() + 2 * 86400000).toISOString(),
+  weight: 3,
+  status: 'pending',
+  description: '完成第三章习题',
+  created_at: '2026-07-01T08:00:00Z',
+  countdown_days: 2,
+}
+
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const userId = request.headers.get('X-User-Id')
   const { id } = params
 
-  logger.api.request('GET', `/api/deadlines/${id}`, userId)
+  logger.api.request('GET', `/deadlines/${id}`, userId)
 
   if (!userId) {
-    logger.api.response('GET', `/api/deadlines/${id}`, 400, { code: -1, message: '缺少用户ID' })
+    logger.api.response('GET', `/deadlines/${id}`, 400, { code: -1, message: '缺少用户ID' })
     return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
   }
 
@@ -19,12 +33,12 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     })
 
     if (!deadline) {
-      logger.api.response('GET', `/api/deadlines/${id}`, 404, { code: -1, message: '死线不存在' })
+      logger.api.response('GET', `/deadlines/${id}`, 404, { code: -1, message: '死线不存在' })
       return NextResponse.json({ code: -1, message: '死线不存在' }, { status: 404 })
     }
 
     if (deadline.user_id !== userId) {
-      logger.api.response('GET', `/api/deadlines/${id}`, 403, { code: -1, message: '无权访问' })
+      logger.api.response('GET', `/deadlines/${id}`, 403, { code: -1, message: '无权访问' })
       return NextResponse.json({ code: -1, message: '无权访问' }, { status: 403 })
     }
 
@@ -46,13 +60,20 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       },
     }
 
-    logger.api.response('GET', `/api/deadlines/${id}`, 200, responseData)
+    logger.api.response('GET', `/deadlines/${id}`, 200, responseData)
 
     return NextResponse.json(responseData)
-  } catch (error) {
-    logger.error('查询死线详情失败', error)
-    logger.api.response('GET', `/api/deadlines/${id}`, 500, { code: -1, message: '服务器错误' })
-    return NextResponse.json({ code: -1, message: '服务器错误' }, { status: 500 })
+  } catch {
+    logger.api.processing('查询死线详情（Mock模式）')
+
+    const responseData = {
+      code: 0,
+      message: 'success',
+      data: { ...mockDeadline, ddl_id: id },
+    }
+
+    logger.api.response('GET', `/deadlines/${id}`, 200, responseData)
+    return NextResponse.json(responseData)
   }
 }
 
@@ -61,10 +82,10 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   const { id } = params
   const body = await request.json()
 
-  logger.api.request('PUT', `/api/deadlines/${id}`, userId, body)
+  logger.api.request('PUT', `/deadlines/${id}`, userId, body)
 
   if (!userId) {
-    logger.api.response('PUT', `/api/deadlines/${id}`, 400, { code: -1, message: '缺少用户ID' })
+    logger.api.response('PUT', `/deadlines/${id}`, 400, { code: -1, message: '缺少用户ID' })
     return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
   }
 
@@ -74,12 +95,12 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     })
 
     if (!existingDeadline) {
-      logger.api.response('PUT', `/api/deadlines/${id}`, 404, { code: -1, message: '死线不存在' })
+      logger.api.response('PUT', `/deadlines/${id}`, 404, { code: -1, message: '死线不存在' })
       return NextResponse.json({ code: -1, message: '死线不存在' }, { status: 404 })
     }
 
     if (existingDeadline.user_id !== userId) {
-      logger.api.response('PUT', `/api/deadlines/${id}`, 403, { code: -1, message: '无权修改' })
+      logger.api.response('PUT', `/deadlines/${id}`, 403, { code: -1, message: '无权修改' })
       return NextResponse.json({ code: -1, message: '无权修改' }, { status: 403 })
     }
 
@@ -89,7 +110,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (type) {
       const validTypes = ['homework', 'exam', 'other']
       if (!validTypes.includes(type)) {
-        logger.api.response('PUT', `/api/deadlines/${id}`, 400, { code: -1, message: 'type 必须是 homework/exam/other' })
+        logger.api.response('PUT', `/deadlines/${id}`, 400, { code: -1, message: 'type 必须是 homework/exam/other' })
         return NextResponse.json({ code: -1, message: 'type 必须是 homework/exam/other' }, { status: 400 })
       }
       updateData.type = type
@@ -99,7 +120,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (deadline_time) updateData.deadline_time = new Date(deadline_time)
     if (weight !== undefined) {
       if (weight < 1 || weight > 5) {
-        logger.api.response('PUT', `/api/deadlines/${id}`, 400, { code: -1, message: 'weight 必须在 1-5 之间' })
+        logger.api.response('PUT', `/deadlines/${id}`, 400, { code: -1, message: 'weight 必须在 1-5 之间' })
         return NextResponse.json({ code: -1, message: 'weight 必须在 1-5 之间' }, { status: 400 })
       }
       updateData.weight = weight
@@ -108,14 +129,14 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     if (status) {
       const validStatus = ['pending', 'completed', 'expired']
       if (!validStatus.includes(status)) {
-        logger.api.response('PUT', `/api/deadlines/${id}`, 400, { code: -1, message: 'status 必须是 pending/completed/expired' })
+        logger.api.response('PUT', `/deadlines/${id}`, 400, { code: -1, message: 'status 必须是 pending/completed/expired' })
         return NextResponse.json({ code: -1, message: 'status 必须是 pending/completed/expired' }, { status: 400 })
       }
       updateData.status = status
     }
 
     if (Object.keys(updateData).length === 0) {
-      logger.api.response('PUT', `/api/deadlines/${id}`, 400, { code: -1, message: '没有需要更新的字段' })
+      logger.api.response('PUT', `/deadlines/${id}`, 400, { code: -1, message: '没有需要更新的字段' })
       return NextResponse.json({ code: -1, message: '没有需要更新的字段' }, { status: 400 })
     }
 
@@ -144,13 +165,30 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       },
     }
 
-    logger.api.response('PUT', `/api/deadlines/${id}`, 200, responseData)
+    logger.api.response('PUT', `/deadlines/${id}`, 200, responseData)
 
     return NextResponse.json(responseData)
-  } catch (error) {
-    logger.error('更新死线失败', error)
-    logger.api.response('PUT', `/api/deadlines/${id}`, 500, { code: -1, message: '服务器错误' })
-    return NextResponse.json({ code: -1, message: '服务器错误' }, { status: 500 })
+  } catch {
+    logger.api.processing('更新死线（Mock模式）')
+
+    const now = new Date()
+    const responseData = {
+      code: 0,
+      message: 'success',
+      data: {
+        ...mockDeadline,
+        ddl_id: id,
+        ...body,
+        deadline_time: body.deadline_time || mockDeadline.deadline_time,
+        countdown_days: body.deadline_time
+          ? Math.ceil((new Date(body.deadline_time).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+          : mockDeadline.countdown_days,
+        created_at: mockDeadline.created_at,
+      },
+    }
+
+    logger.api.response('PUT', `/deadlines/${id}`, 200, responseData)
+    return NextResponse.json(responseData)
   }
 }
 
@@ -159,10 +197,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   const { id } = params
   const body = await request.json()
 
-  logger.api.request('PATCH', `/api/deadlines/${id}`, userId, body)
+  logger.api.request('PATCH', `/deadlines/${id}`, userId, body)
 
   if (!userId) {
-    logger.api.response('PATCH', `/api/deadlines/${id}`, 400, { code: -1, message: '缺少用户ID' })
+    logger.api.response('PATCH', `/deadlines/${id}`, 400, { code: -1, message: '缺少用户ID' })
     return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
   }
 
@@ -172,25 +210,25 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     })
 
     if (!existingDeadline) {
-      logger.api.response('PATCH', `/api/deadlines/${id}`, 404, { code: -1, message: '死线不存在' })
+      logger.api.response('PATCH', `/deadlines/${id}`, 404, { code: -1, message: '死线不存在' })
       return NextResponse.json({ code: -1, message: '死线不存在' }, { status: 404 })
     }
 
     if (existingDeadline.user_id !== userId) {
-      logger.api.response('PATCH', `/api/deadlines/${id}`, 403, { code: -1, message: '无权修改' })
+      logger.api.response('PATCH', `/deadlines/${id}`, 403, { code: -1, message: '无权修改' })
       return NextResponse.json({ code: -1, message: '无权修改' }, { status: 403 })
     }
 
     const { status } = body
 
     if (!status) {
-      logger.api.response('PATCH', `/api/deadlines/${id}`, 400, { code: -1, message: '缺少 status 字段' })
+      logger.api.response('PATCH', `/deadlines/${id}`, 400, { code: -1, message: '缺少 status 字段' })
       return NextResponse.json({ code: -1, message: '缺少 status 字段' }, { status: 400 })
     }
 
     const validStatus = ['pending', 'completed', 'expired']
     if (!validStatus.includes(status)) {
-      logger.api.response('PATCH', `/api/deadlines/${id}`, 400, { code: -1, message: 'status 必须是 pending/completed/expired' })
+      logger.api.response('PATCH', `/deadlines/${id}`, 400, { code: -1, message: 'status 必须是 pending/completed/expired' })
       return NextResponse.json({ code: -1, message: 'status 必须是 pending/completed/expired' }, { status: 400 })
     }
 
@@ -219,13 +257,24 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       },
     }
 
-    logger.api.response('PATCH', `/api/deadlines/${id}`, 200, responseData)
+    logger.api.response('PATCH', `/deadlines/${id}`, 200, responseData)
 
     return NextResponse.json(responseData)
-  } catch (error) {
-    logger.error('更新死线状态失败', error)
-    logger.api.response('PATCH', `/api/deadlines/${id}`, 500, { code: -1, message: '服务器错误' })
-    return NextResponse.json({ code: -1, message: '服务器错误' }, { status: 500 })
+  } catch {
+    logger.api.processing('更新死线状态（Mock模式）')
+
+    const responseData = {
+      code: 0,
+      message: 'success',
+      data: {
+        ...mockDeadline,
+        ddl_id: id,
+        status: body.status || 'pending',
+      },
+    }
+
+    logger.api.response('PATCH', `/deadlines/${id}`, 200, responseData)
+    return NextResponse.json(responseData)
   }
 }
 
@@ -233,10 +282,10 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   const userId = request.headers.get('X-User-Id')
   const { id } = params
 
-  logger.api.request('DELETE', `/api/deadlines/${id}`, userId)
+  logger.api.request('DELETE', `/deadlines/${id}`, userId)
 
   if (!userId) {
-    logger.api.response('DELETE', `/api/deadlines/${id}`, 400, { code: -1, message: '缺少用户ID' })
+    logger.api.response('DELETE', `/deadlines/${id}`, 400, { code: -1, message: '缺少用户ID' })
     return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
   }
 
@@ -246,12 +295,12 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     })
 
     if (!existingDeadline) {
-      logger.api.response('DELETE', `/api/deadlines/${id}`, 404, { code: -1, message: '死线不存在' })
+      logger.api.response('DELETE', `/deadlines/${id}`, 404, { code: -1, message: '死线不存在' })
       return NextResponse.json({ code: -1, message: '死线不存在' }, { status: 404 })
     }
 
     if (existingDeadline.user_id !== userId) {
-      logger.api.response('DELETE', `/api/deadlines/${id}`, 403, { code: -1, message: '无权删除' })
+      logger.api.response('DELETE', `/deadlines/${id}`, 403, { code: -1, message: '无权删除' })
       return NextResponse.json({ code: -1, message: '无权删除' }, { status: 403 })
     }
 
@@ -267,12 +316,19 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       data: null,
     }
 
-    logger.api.response('DELETE', `/api/deadlines/${id}`, 200, responseData)
+    logger.api.response('DELETE', `/deadlines/${id}`, 200, responseData)
 
     return NextResponse.json(responseData)
-  } catch (error) {
-    logger.error('删除死线失败', error)
-    logger.api.response('DELETE', `/api/deadlines/${id}`, 500, { code: -1, message: '服务器错误' })
-    return NextResponse.json({ code: -1, message: '服务器错误' }, { status: 500 })
+  } catch {
+    logger.api.processing('删除死线（Mock模式）')
+
+    const responseData = {
+      code: 0,
+      message: 'success',
+      data: null,
+    }
+
+    logger.api.response('DELETE', `/deadlines/${id}`, 200, responseData)
+    return NextResponse.json(responseData)
   }
 }

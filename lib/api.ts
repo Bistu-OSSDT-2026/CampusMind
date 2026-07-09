@@ -1,6 +1,6 @@
 import { Message, Course, Deadline, Plan } from '@/types'
 
-const BASE_URL = '/api'
+const BASE_URL = ''
 const USER_ID = process.env.NEXT_PUBLIC_USER_ID || 'test-user-1'
 
 const headers = {
