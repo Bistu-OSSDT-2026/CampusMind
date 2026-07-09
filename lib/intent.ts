@@ -116,9 +116,9 @@ export function extractDeadlineInfo(message: string): { subject?: string; days?:
       '周四': 4,
       '周五': 5,
       '周六': 6,
-      '周日': 0,
+      '周日': 7,
     }
-    const today = new Date().getDay()
+    const today = new Date().getDay() === 0 ? 7 : new Date().getDay()
     const targetDay = weekMap[weekMatches[1]]
     if (targetDay !== undefined) {
       let diff = targetDay - today

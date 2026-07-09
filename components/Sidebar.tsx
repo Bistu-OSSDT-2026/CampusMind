@@ -40,21 +40,21 @@ const getDnLabel = (countdownDays: number) => {
 const formatPeriod = (startPeriod: number, endPeriod: number) => {
   const periodTimes: Record<number, string> = {
     1: '08:00',
-    2: '08:50',
-    3: '09:50',
-    4: '10:40',
-    5: '11:30',
-    6: '14:00',
-    7: '14:50',
-    8: '15:50',
-    9: '16:40',
+    2: '08:55',
+    3: '10:00',
+    4: '10:55',
+    5: '12:00',
+    6: '13:30',
+    7: '14:25',
+    8: '15:30',
+    9: '16:25',
     10: '17:30',
-    11: '19:00',
-    12: '19:50',
+    11: '18:30',
+    12: '19:25',
   }
   const start = periodTimes[startPeriod] || `${startPeriod * 60 + 480}`
-  const end = periodTimes[endPeriod] || `${endPeriod * 60 + 540}`
-  return `${start}-${end}`
+  const endTime = periodTimes[endPeriod + 1] || `${(endPeriod + 1) * 60 + 480}`
+  return `${start}-${endTime}`
 }
 
 const getWeekNumber = (date: Date): number => {

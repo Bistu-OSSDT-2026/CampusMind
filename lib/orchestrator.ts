@@ -115,11 +115,21 @@ async function getNextCourse(userId: string) {
   } catch {
     const today = new Date()
     const weekday = today.getDay() === 0 ? 7 : today.getDay()
+    const hour = today.getHours()
+    const minute = today.getMinutes()
     const mockCourses = [
       { course_id: 'course-math', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday, start_period: 1, end_period: 2 },
       { course_id: 'course-physics', name: '大学物理', teacher: '李教授', location: '物理系楼B203', weekday, start_period: 3, end_period: 4 },
     ]
-    return mockCourses.find(c => c.weekday === weekday) || mockCourses[0]
+    for (const course of mockCourses) {
+      const startTime = periodStartTimes.find(p => p.period === course.start_period)
+      if (startTime) {
+        if (startTime.hour > hour || (startTime.hour === hour && startTime.minute >= minute)) {
+          return course
+        }
+      }
+    }
+    return null
   }
 }
 
