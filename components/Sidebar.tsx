@@ -306,6 +306,7 @@ export function Sidebar({ todayCourses, urgentDeadlines, onQuickAction, onDeadli
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
+                              console.log('Complete button clicked for:', deadline.ddl_id)
                               onDeadlineComplete?.(deadline.ddl_id)
                             }}
                             className="flex-1 text-xs py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-colors"
@@ -315,6 +316,7 @@ export function Sidebar({ todayCourses, urgentDeadlines, onQuickAction, onDeadli
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
+                              console.log('Extend button clicked for:', deadline.ddl_id)
                               onDeadlineExtend?.(deadline.ddl_id)
                             }}
                             className="flex-1 text-xs py-2 bg-amber-50 text-amber-600 rounded-lg hover:bg-amber-100 transition-colors"

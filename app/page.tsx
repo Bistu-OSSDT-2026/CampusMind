@@ -37,8 +37,6 @@ export default function Home() {
 
   useEffect(() => {
     loadSidebarData()
-    const interval = setInterval(loadSidebarData, 60000)
-    return () => clearInterval(interval)
   }, [loadSidebarData])
 
   const handleSend = async (content: string) => {
@@ -102,18 +100,27 @@ export default function Home() {
     const handleDeadlineComplete = async (ddlId: string) => {
       try {
         await api.deadlines.complete(ddlId)
-        loadSidebarData()
       } catch {
-        console.error('Failed to complete deadline')
+        console.error('Failed to complete deadline via API')
+      } finally {
+        setUrgentDeadlines((prev) => prev.filter((d) => d.ddl_id !== ddlId))
       }
     }
 
     const handleDeadlineExtend = async (ddlId: string) => {
+      const newTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       try {
-        await api.deadlines.update(ddlId, { deadline_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() })
-        loadSidebarData()
+        await api.deadlines.update(ddlId, { deadline_time: newTime })
       } catch {
-        console.error('Failed to extend deadline')
+        console.error('Failed to extend deadline via API')
+      } finally {
+        setUrgentDeadlines((prev) =>
+          prev.map((d) =>
+            d.ddl_id === ddlId
+              ? { ...d, deadline_time: newTime, countdown_days: d.countdown_days + 1 }
+              : d
+          )
+        )
       }
     }
 
