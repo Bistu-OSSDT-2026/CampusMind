@@ -1,7 +1,5 @@
 # CampusMind - 校园学业规划助手
 
-![CampusMind Logo](https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=modern%20education%20app%20icon%20with%20graduation%20cap%20and%20calendar&image_size=square)
-
 CampusMind 是一款面向大学生的智能学业规划助手，帮助学生高效管理课程、追踪死线、生成个性化复习计划。
 
 ## ✨ 功能特性
