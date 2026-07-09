@@ -1,6 +1,6 @@
 import { IntentType } from './intent'
 import { extractDeadlineInfo } from './intent'
-import { prisma } from './prisma'
+import { prisma } from '@/lib/prisma'
 import { generateReviewPlan, type LLMPlanResult, type DailyTaskLLM } from './llm'
 import { generateBoundaryReply } from './boundary'
 import type { ToolAction, OrchestrationResult, Deadline } from '@/types'
@@ -70,9 +70,11 @@ async function getTodayCourses(userId: string) {
     })
     return courses
   } catch {
+    const today = new Date()
+    const mockWeekday = today.getDay() === 0 ? 7 : today.getDay()
     return [
-      { course_id: 'course-math', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: 1, start_period: 1, end_period: 2 },
-      { course_id: 'course-physics', name: '大学物理', teacher: '李教授', location: '物理系楼B203', weekday: 1, start_period: 3, end_period: 4 },
+      { course_id: 'course-math', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: mockWeekday, start_period: 1, end_period: 2 },
+      { course_id: 'course-physics', name: '大学物理', teacher: '李教授', location: '物理系楼B203', weekday: mockWeekday, start_period: 3, end_period: 4 },
     ]
   }
 }
@@ -114,10 +116,10 @@ async function getNextCourse(userId: string) {
     const today = new Date()
     const weekday = today.getDay() === 0 ? 7 : today.getDay()
     const mockCourses = [
-      { course_id: 'course-math', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: 1, start_period: 1, end_period: 2 },
-      { course_id: 'course-physics', name: '大学物理', teacher: '李教授', location: '物理系楼B203', weekday: 1, start_period: 3, end_period: 4 },
+      { course_id: 'course-math', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday, start_period: 1, end_period: 2 },
+      { course_id: 'course-physics', name: '大学物理', teacher: '李教授', location: '物理系楼B203', weekday, start_period: 3, end_period: 4 },
     ]
-    return mockCourses.find(c => c.weekday === weekday) || null
+    return mockCourses.find(c => c.weekday === weekday) || mockCourses[0]
   }
 }
 
@@ -341,6 +343,15 @@ export async function execute(intent: IntentType, message: string, userId: strin
           reply: `下节课是【${nextCourse.name}】，在${nextCourse.location}，${time}上课。\n\n今天还有以下课程：\n• ${todayCourseList}`,
           intent,
           actions: [...actions, { tool: 'course', action: 'query', result: '查询下节课' }],
+        }
+      }
+
+      if (todayCourses.length > 0) {
+        const todayCourseList = todayCourses.map(c => `${c.name} - ${c.location} - ${formatCourseTime(c.start_period, c.end_period)}`).join('\n• ')
+        return {
+          reply: `今天已经没有下一节课了，但今天有以下课程：\n• ${todayCourseList}`,
+          intent,
+          actions,
         }
       }
 

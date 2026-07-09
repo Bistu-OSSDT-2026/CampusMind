@@ -5,6 +5,7 @@ module.exports = {
   testPathIgnorePatterns: ['node_modules', '.next'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    '^./prisma$': '<rootDir>/lib/prisma',
   },
   collectCoverageFrom: [
     'lib/**/*.ts',

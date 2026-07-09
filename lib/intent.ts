@@ -22,7 +22,7 @@ const intentRules: { intent: IntentType; keywords: string[] }[] = [
   },
   {
     intent: 'aggregated_query',
-    keywords: ['近期任务', '这周有啥', '今天任务', '今日概览', '最近安排', '近期安排'],
+    keywords: ['近期任务', '这周有啥', '今天任务', '今日概览', '最近安排', '近期安排', '今天有什么任务'],
   },
   {
     intent: 'checkin_feedback',
