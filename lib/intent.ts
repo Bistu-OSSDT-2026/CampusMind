@@ -1,5 +1,7 @@
 import { IntentType } from '@/types'
 
+export type { IntentType }
+
 // 关键词匹配规则：按优先级排列，先匹配到的优先返回
 const intentRules: { intent: IntentType; keywords: string[] }[] = [
   {
