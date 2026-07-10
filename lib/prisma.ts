@@ -11,14 +11,17 @@ if (process.env.NODE_ENV !== 'production') {
   globalThis.prisma = prisma
 }
 
-/** 检查数据库是否可用（首次检测后缓存结果） */
+/** 检查数据库是否可用（首次检测后缓存结果，5秒超时） */
 let _dbChecked = false
 export async function isDbAvailable(): Promise<boolean> {
   if (_dbChecked && globalThis.prismaAvailable !== undefined) {
     return globalThis.prismaAvailable
   }
   try {
-    await prisma.$queryRaw`SELECT 1`
+    await Promise.race([
+      prisma.$queryRaw`SELECT 1`,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+    ])
     globalThis.prismaAvailable = true
   } catch {
     globalThis.prismaAvailable = false

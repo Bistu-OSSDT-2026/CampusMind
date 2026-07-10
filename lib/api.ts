@@ -8,7 +8,7 @@ const headers = {
   'X-User-Id': USER_ID,
 }
 
-const FETCH_TIMEOUT = 10000
+const FETCH_TIMEOUT = 30000
 const MAX_RETRIES = 2
 
 export interface ApiResponse<T = any> {
