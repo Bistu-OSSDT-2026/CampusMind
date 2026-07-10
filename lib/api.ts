@@ -317,7 +317,7 @@ export const api = {
   settings: {
     get: async (): Promise<ApiResponse<{ firstWeekStartDate: string }>> => {
       try {
-        return await safeFetch(`${BASE_URL}/settings`, { headers })
+        return await safeFetch(`${BASE_URL}/settings`, { headers: getHeaders() })
       } catch (error) {
         console.error('[API] settings.get failed:', error)
         throw error
@@ -327,7 +327,7 @@ export const api = {
       try {
         return await safeFetch(`${BASE_URL}/settings`, {
           method: 'PUT',
-          headers,
+          headers: getHeaders(),
           body: JSON.stringify(settings),
         })
       } catch (error) {
