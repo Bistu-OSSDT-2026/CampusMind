@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { getRedis, getSessionKey } from '@/lib/redis'
+import { prisma, isDbAvailable } from '@/lib/prisma'
+import { getRedis, getSessionKey, isRedisAvailable } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 import { detectIntent } from '@/lib/intent'
 import { execute } from '@/lib/orchestrator'
@@ -22,8 +22,36 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ code: -1, message: '消息内容不能为空' }, { status: 400 })
   }
 
-  logger.api.processing('开始意图识别', { message })
+  // 快速检测数据库和 Redis 可用性
+  const dbOk = await isDbAvailable()
+  const redisOk = await isRedisAvailable()
 
+  // 意图识别 + 编排引擎（不依赖数据库，始终可用）
+  const intent = detectIntent(message)
+  logger.api.processing('意图识别结果', { intent })
+
+  const result = await execute(intent, message, userId)
+
+  if (!dbOk) {
+    // 数据库不可用 → 直接返回编排结果，跳过所有数据库操作
+    logger.api.processing('数据库不可用，跳过会话持久化')
+    const mockSessionId = session_id || `session-${Date.now()}`
+    const responseData = {
+      code: 0,
+      message: 'success',
+      data: {
+        session_id: mockSessionId,
+        reply: result.reply,
+        intent: result.intent,
+        actions: result.actions,
+        urgent_deadline: result.urgent_deadline,
+      },
+    }
+    logger.api.response('POST', '/api/dialog/message', 200, responseData)
+    return NextResponse.json(responseData)
+  }
+
+  // 数据库可用 → 正常流程
   try {
     let sessionId = session_id
 
@@ -50,22 +78,22 @@ export async function POST(request: NextRequest) {
       })
       sessionId = newSession.session_id
 
-      await getRedis().set(getSessionKey(sessionId), JSON.stringify({
-        user_id: userId,
-        session_id: sessionId,
-        expires_at: expiresAt.toISOString(),
-      }), 'EX', 24 * 60 * 60)
+      if (redisOk) {
+        await getRedis().set(getSessionKey(sessionId), JSON.stringify({
+          user_id: userId,
+          session_id: sessionId,
+          expires_at: expiresAt.toISOString(),
+        }), 'EX', 24 * 60 * 60)
+      }
     } else {
       await prisma.dialogSession.update({
         where: { session_id: sessionId },
         data: { last_active_at: new Date() },
       })
-      await getRedis().expire(getSessionKey(sessionId), 24 * 60 * 60)
+      if (redisOk) {
+        await getRedis().expire(getSessionKey(sessionId), 24 * 60 * 60)
+      }
     }
-
-    // 使用意图识别 + 编排引擎
-    const intent = detectIntent(message)
-    logger.api.processing('意图识别结果', { intent })
 
     await prisma.dialogMessage.create({
       data: {
@@ -76,10 +104,6 @@ export async function POST(request: NextRequest) {
         intent,
       },
     })
-
-    logger.api.processing('编排引擎执行', { intent })
-
-    const result = await execute(intent, message, userId)
 
     await prisma.dialogMessage.create({
       data: {
@@ -105,16 +129,11 @@ export async function POST(request: NextRequest) {
     }
 
     logger.api.response('POST', '/api/dialog/message', 200, responseData)
-
     return NextResponse.json(responseData)
   } catch (error) {
     logger.error('对话接口错误，降级为Mock模式', error)
 
-    // 降级：直接调用编排引擎（编排引擎内部也有 mock 降级）
     const mockSessionId = session_id || `session-${Date.now()}`
-    const intent = detectIntent(message)
-    const result = await execute(intent, message, userId)
-
     const responseData = {
       code: 0,
       message: 'success',
