@@ -649,7 +649,7 @@ export async function execute(intent: IntentType, message: string, userId: strin
       // 优先使用 LLM 判断的类型，否则从消息内容判断
       let ddlType: 'exam' | 'homework' | 'other' = llmParams?.type || 'other'
       if (!llmParams?.type) {
-        if (/考试|测验|期中|期末|测试/.test(message)) ddlType = 'exam'
+        if (/考试|测验|期中|期末|测试|考[^试]|[^考]考$/.test(message)) ddlType = 'exam'
         else if (/作业|报告|论文|实验|提交|截止/.test(message)) ddlType = 'homework'
       }
       const typeLabel: Record<string, string> = { exam: '考试', homework: '作业', other: '事项' }
