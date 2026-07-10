@@ -9,6 +9,8 @@ datasource db {
 
 model User {
   user_id            String     @id @default(cuid())
+  username           String?    @unique
+  password_hash      String?
   phone              String?    @unique
   nickname           String?
   school             String?

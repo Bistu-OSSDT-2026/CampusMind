@@ -2,18 +2,9 @@ import { Message, Course, Deadline, Plan } from '@/types'
 
 const BASE_URL = '/api'
 
-/** 获取当前用户ID（优先从 localStorage 读取，支持多账号切换） */
-function getUserId(): string {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('campusmind-user-id') || process.env.NEXT_PUBLIC_USER_ID || 'test-user-1'
-  }
-  return process.env.NEXT_PUBLIC_USER_ID || 'test-user-1'
-}
-
-/** 获取请求头（动态读取当前用户ID） */
+/** 获取请求头 */
 const getHeaders = () => ({
   'Content-Type': 'application/json',
-  'X-User-Id': getUserId(),
 })
 
 const FETCH_TIMEOUT = 30000
@@ -55,7 +46,7 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
 
   try {
-    const response = await fetch(url, { ...options, signal: controller.signal })
+    const response = await fetch(url, { ...options, credentials: 'include', signal: controller.signal })
     return response
   } finally {
     clearTimeout(timeoutId)
@@ -99,6 +90,40 @@ async function safeFetch<T>(
 }
 
 export const api = {
+  auth: {
+    login: async (username: string, password: string): Promise<ApiResponse<{ user_id: string; username: string; nickname: string }>> => {
+      const response = await fetch(`${BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: getHeaders(),
+        credentials: 'include',
+        body: JSON.stringify({ username, password }),
+      })
+      return response.json()
+    },
+    register: async (username: string, password: string): Promise<ApiResponse<{ user_id: string; username: string; nickname: string }>> => {
+      const response = await fetch(`${BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: getHeaders(),
+        credentials: 'include',
+        body: JSON.stringify({ username, password }),
+      })
+      return response.json()
+    },
+    logout: async (): Promise<ApiResponse<void>> => {
+      const response = await fetch(`${BASE_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      return response.json()
+    },
+    me: async (): Promise<ApiResponse<{ user_id: string; username: string; nickname: string }>> => {
+      const response = await fetch(`${BASE_URL}/auth/me`, {
+        credentials: 'include',
+      })
+      return response.json()
+    },
+  },
+
   dialog: {
     message: async (message: string, sessionId?: string): Promise<ApiResponse<DialogResponse>> => {
       try {

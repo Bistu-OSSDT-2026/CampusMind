@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Message, Course, Deadline, ToolAction } from '@/types'
 import { api } from '@/lib/api'
 import { Sidebar } from '@/components/Sidebar'
@@ -9,7 +9,7 @@ import { MessageList } from '@/components/MessageList'
 import { ChatInput } from '@/components/ChatInput'
 
 export default function Home() {
-  const pathname = usePathname()
+  const router = useRouter()
   const [messages, setMessages] = useState<Message[]>([])
   const [sessionId, setSessionId] = useState<string | undefined>()
   const [isLoading, setIsLoading] = useState(false)
@@ -20,16 +20,23 @@ export default function Home() {
   const [inputMessage, setInputMessage] = useState('')
   const chatInputRef = useRef<HTMLTextAreaElement>(null)
 
-  // 多账号切换
-  const [currentUserId, setCurrentUserId] = useState<string>('test-user-1')
-  const [showUserSwitch, setShowUserSwitch] = useState(false)
-  const [newUserId, setNewUserId] = useState('')
+  // 认证状态
+  const [currentUser, setCurrentUser] = useState<{ user_id: string; username: string; nickname: string } | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
 
-  // 初始化：从 localStorage 读取用户ID
+  // 检查登录状态
   useEffect(() => {
-    const saved = localStorage.getItem('campusmind-user-id')
-    if (saved) setCurrentUserId(saved)
-  }, [])
+    api.auth.me().then(res => {
+      if (res.code === 0) {
+        setCurrentUser(res.data)
+        setAuthChecked(true)
+      } else {
+        router.push('/login')
+      }
+    }).catch(() => {
+      router.push('/login')
+    })
+  }, [router])
 
   const loadSidebarData = useCallback(async () => {
     try {
@@ -49,8 +56,15 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
-    loadSidebarData()
-  }, [loadSidebarData, pathname])
+    if (authChecked && currentUser) {
+      loadSidebarData()
+    }
+  }, [authChecked, currentUser, loadSidebarData])
+
+  const handleLogout = async () => {
+    await api.auth.logout()
+    router.push('/login')
+  }
 
   const handleSend = async (content: string) => {
     const userMessage: Message = {
@@ -137,6 +151,15 @@ export default function Home() {
       }
     }
 
+  // 未登录时显示加载
+  if (!authChecked) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-primary-50/20 to-teal-50/20">
+        <div className="text-gray-500">加载中...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-screen bg-gradient-to-br from-slate-50 via-primary-50/20 to-teal-50/20">
       <Sidebar
@@ -150,57 +173,16 @@ export default function Home() {
       <main className="flex-1 flex flex-col min-w-0">
         <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between">
           <h1 className="text-lg font-bold text-gray-800">CampusMind</h1>
-          <div className="relative">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-600">
+              {currentUser?.nickname || currentUser?.username}
+            </span>
             <button
-              onClick={() => setShowUserSwitch(!showUserSwitch)}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-primary-50 hover:bg-primary-100 text-primary-700 transition-colors"
+              onClick={handleLogout}
+              className="px-3 py-1.5 text-sm rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-              {currentUserId}
+              退出登录
             </button>
-            {showUserSwitch && (
-              <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-100 p-4 z-50">
-                <p className="text-xs text-gray-500 mb-2">切换账号（输入用户ID）</p>
-                <div className="flex gap-2">
-                  <input
-                    value={newUserId}
-                    onChange={(e) => setNewUserId(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && newUserId.trim()) {
-                        localStorage.setItem('campusmind-user-id', newUserId.trim())
-                        setCurrentUserId(newUserId.trim())
-                        setNewUserId('')
-                        setShowUserSwitch(false)
-                        setMessages([])
-                        setSessionId(undefined)
-                        loadSidebarData()
-                      }
-                    }}
-                    placeholder="输入用户ID"
-                    className="flex-1 px-3 py-1.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300"
-                  />
-                  <button
-                    onClick={() => {
-                      if (newUserId.trim()) {
-                        localStorage.setItem('campusmind-user-id', newUserId.trim())
-                        setCurrentUserId(newUserId.trim())
-                        setNewUserId('')
-                        setShowUserSwitch(false)
-                        setMessages([])
-                        setSessionId(undefined)
-                        loadSidebarData()
-                      }
-                    }}
-                    className="px-3 py-1.5 text-sm bg-primary-500 text-white rounded-lg hover:bg-primary-600"
-                  >
-                    切换
-                  </button>
-                </div>
-                <div className="mt-3 text-xs text-gray-400">
-                  当前：{currentUserId}
-                </div>
-              </div>
-            )}
           </div>
         </header>
 

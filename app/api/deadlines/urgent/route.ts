@@ -56,9 +56,8 @@ export async function GET(request: NextRequest) {
 
   try {
     const now = new Date()
-    const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
 
-    logger.api.processing('查询紧迫死线', { filter: 'countdown_days <= 7 && status === pending' })
+    logger.api.processing('查询紧迫死线', { filter: 'status === pending && deadline_time >= now' })
 
     const deadlines = await prisma.deadline.findMany({
       where: {
@@ -66,7 +65,6 @@ export async function GET(request: NextRequest) {
         status: 'pending',
         deadline_time: {
           gte: now,
-          lte: sevenDaysLater,
         },
       },
       orderBy: { deadline_time: 'asc' },
