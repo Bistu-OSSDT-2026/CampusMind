@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/logger'
-import { mockCourses, getTodayWeekday } from '@/lib/mock-data'
+import { getTodayWeekday } from '@/lib/mock-data'
+import { getAllCourses } from '@/lib/course-store'
 
 const PERIOD_TIMES: Record<number, { start: string; end: string }> = {
   1: { start: '08:00', end: '09:35' },
@@ -13,13 +14,13 @@ const PERIOD_TIMES: Record<number, { start: string; end: string }> = {
   8: { start: '20:50', end: '22:25' },
 }
 
-export async function GET(request: NextRequest) {
+export function GET(request: NextRequest) {
   const userId = request.headers.get('X-User-Id')
 
-  logger.api.request('GET', '/api/courses/next', userId)
+  logger.api.request('GET', '/courses/next', userId)
 
   if (!userId) {
-    logger.api.response('GET', '/api/courses/next', 400, { code: -1, message: '缺少用户ID' })
+    logger.api.response('GET', '/courses/next', 400, { code: -1, message: '缺少用户ID' })
     return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
   }
 
@@ -28,7 +29,8 @@ export async function GET(request: NextRequest) {
   const currentHour = today.getHours()
   const currentMinute = today.getMinutes()
 
-  const sortedCourses = [...mockCourses].sort((a, b) => {
+  const allCourses = getAllCourses()
+  const sortedCourses = [...allCourses].sort((a, b) => {
     if (a.weekday !== b.weekday) return a.weekday - b.weekday
     return a.start_period - b.start_period
   })
@@ -64,7 +66,7 @@ export async function GET(request: NextRequest) {
     message: 'success',
     data: nextCourse
       ? {
-          course_id: nextCourse.id,
+          course_id: nextCourse.course_id,
           name: nextCourse.name,
           teacher: nextCourse.teacher || '未知',
           location: nextCourse.location || '未知地点',
@@ -80,6 +82,6 @@ export async function GET(request: NextRequest) {
       : null,
   }
 
-  logger.api.response('GET', '/api/courses/next', 200, responseData)
+  logger.api.response('GET', '/courses/next', 200, responseData)
   return NextResponse.json(responseData)
 }

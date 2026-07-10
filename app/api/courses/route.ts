@@ -1,36 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/logger'
-import { mockCourses } from '@/lib/mock-data'
+import { getAllCourses, addCourse, Course } from '@/lib/course-store'
 
-declare global {
-  var dynamicCourses: Array<{
-    course_id: string
-    name: string
-    teacher: string
-    location: string
-    weekday: number
-    start_period: number
-    end_period: number
-    week_range: string
-    created_at: string
-  }>
-}
-
-if (!global.dynamicCourses) {
-  global.dynamicCourses = mockCourses.map(c => ({
-    course_id: c.id,
-    name: c.name,
-    teacher: c.teacher,
-    location: c.location,
-    weekday: c.weekday,
-    start_period: c.start_period,
-    end_period: c.end_period,
-    week_range: c.week_range,
-    created_at: c.created_at,
-  }))
-}
-
-export async function GET(request: NextRequest) {
+export function GET(request: NextRequest) {
   const userId = request.headers.get('X-User-Id')
 
   logger.api.request('GET', '/courses', userId)
@@ -40,12 +12,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
   }
 
-  logger.api.processing('查询全部课程', { count: global.dynamicCourses.length })
+  const courses = getAllCourses()
+
+  logger.api.processing('查询全部课程', { count: courses.length })
 
   const responseData = {
     code: 0,
     message: 'success',
-    data: global.dynamicCourses,
+    data: courses,
   }
 
   logger.api.response('GET', '/courses', 200, responseData)
@@ -72,8 +46,7 @@ export async function POST(request: NextRequest) {
 
     logger.api.processing('创建课程', { name: body.name, teacher: body.teacher })
 
-    const newCourse = {
-      course_id: `course-${Date.now()}`,
+    const newCourse = addCourse({
       name: body.name,
       teacher: body.teacher || '未知',
       location: body.location || '未知地点',
@@ -82,9 +55,7 @@ export async function POST(request: NextRequest) {
       end_period: body.end_period || 2,
       week_range: body.week_range || '1-16',
       created_at: new Date().toISOString(),
-    }
-
-    global.dynamicCourses.push(newCourse)
+    })
 
     const responseData = {
       code: 0,

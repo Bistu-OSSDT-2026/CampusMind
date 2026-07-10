@@ -1,25 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/logger'
-
-declare global {
-  var dynamicCourses: Array<{
-    course_id: string
-    name: string
-    teacher: string
-    location: string
-    weekday: number
-    start_period: number
-    end_period: number
-    week_range: string
-    created_at: string
-  }>
-}
+import { updateCourse, deleteCourse } from '@/lib/course-store'
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
-  const courseId = params.id
   try {
     const userId = request.headers.get('X-User-Id')
     const body = await request.json()
+    const courseId = params.id
 
     logger.api.request('PUT', `/courses/${courseId}`, userId, body)
 
@@ -35,24 +22,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     logger.api.processing('更新课程', { courseId, name: body.name })
 
-    if (global.dynamicCourses) {
-      const index = global.dynamicCourses.findIndex(c => c.course_id === courseId)
-      if (index !== -1) {
-        global.dynamicCourses[index] = {
-          ...global.dynamicCourses[index],
-          name: body.name,
-          teacher: body.teacher || '未知',
-          location: body.location || '未知地点',
-          weekday: body.weekday || 1,
-          start_period: body.start_period || 1,
-          end_period: body.end_period || 2,
-          week_range: body.week_range || '1-16',
-        }
-      }
-    }
-
-    const updatedCourse = {
-      course_id: courseId,
+    const updatedCourse = updateCourse(courseId, {
       name: body.name,
       teacher: body.teacher || '未知',
       location: body.location || '未知地点',
@@ -60,7 +30,11 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       start_period: body.start_period || 1,
       end_period: body.end_period || 2,
       week_range: body.week_range || '1-16',
-      updated_at: new Date().toISOString(),
+    })
+
+    if (!updatedCourse) {
+      logger.api.response('PUT', `/courses/${courseId}`, 404, { code: -1, message: '课程不存在' })
+      return NextResponse.json({ code: -1, message: '课程不存在' }, { status: 404 })
     }
 
     const responseData = {
@@ -74,41 +48,38 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json(responseData)
   } catch (error) {
     logger.error('课程更新接口错误', error)
-    logger.api.response('PUT', `/courses/${courseId}`, 500, { code: -1, message: '服务器错误' })
+    logger.api.response('PUT', `/courses/${params.id}`, 500, { code: -1, message: '服务器错误' })
     return NextResponse.json({ code: -1, message: '服务器错误' }, { status: 500 })
   }
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  const userId = request.headers.get('X-User-Id')
   const courseId = params.id
-  try {
-    const userId = request.headers.get('X-User-Id')
 
-    logger.api.request('DELETE', `/courses/${courseId}`, userId)
+  logger.api.request('DELETE', `/courses/${courseId}`, userId)
 
-    if (!userId) {
-      logger.api.response('DELETE', `/courses/${courseId}`, 400, { code: -1, message: '缺少用户ID' })
-      return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
-    }
-
-    logger.api.processing('删除课程', { courseId })
-
-    if (global.dynamicCourses) {
-      global.dynamicCourses = global.dynamicCourses.filter(c => c.course_id !== courseId)
-    }
-
-    const responseData = {
-      code: 0,
-      message: 'success',
-      data: null,
-    }
-
-    logger.api.response('DELETE', `/courses/${courseId}`, 200, responseData)
-
-    return NextResponse.json(responseData)
-  } catch (error) {
-    logger.error('课程删除接口错误', error)
-    logger.api.response('DELETE', `/courses/${courseId}`, 500, { code: -1, message: '服务器错误' })
-    return NextResponse.json({ code: -1, message: '服务器错误' }, { status: 500 })
+  if (!userId) {
+    logger.api.response('DELETE', `/courses/${courseId}`, 400, { code: -1, message: '缺少用户ID' })
+    return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
   }
+
+  logger.api.processing('删除课程', { courseId })
+
+  const deleted = deleteCourse(courseId)
+
+  if (!deleted) {
+    logger.api.response('DELETE', `/courses/${courseId}`, 404, { code: -1, message: '课程不存在' })
+    return NextResponse.json({ code: -1, message: '课程不存在' }, { status: 404 })
+  }
+
+  const responseData = {
+    code: 0,
+    message: 'success',
+    data: { course_id: courseId },
+  }
+
+  logger.api.response('DELETE', `/courses/${courseId}`, 200, responseData)
+
+  return NextResponse.json(responseData)
 }

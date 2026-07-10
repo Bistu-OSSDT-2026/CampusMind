@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/logger'
-import { mockCourses, getTodayWeekday } from '@/lib/mock-data'
+import { getTodayWeekday } from '@/lib/mock-data'
+import { getCoursesByWeekday } from '@/lib/course-store'
 
 const PERIOD_TIMES: Record<number, { start: string; end: string }> = {
   1: { start: '08:00', end: '09:35' },
@@ -13,7 +14,7 @@ const PERIOD_TIMES: Record<number, { start: string; end: string }> = {
   8: { start: '20:50', end: '22:25' },
 }
 
-export async function GET(request: NextRequest) {
+export function GET(request: NextRequest) {
   const userId = request.headers.get('X-User-Id')
 
   logger.api.request('GET', '/courses/today', userId)
@@ -28,27 +29,17 @@ export async function GET(request: NextRequest) {
 
   logger.api.processing('查询今日课程', { today: today.toISOString(), weekday })
 
-  const todayCourses = mockCourses.filter(c => c.weekday === weekday).map(c => {
-    const start = PERIOD_TIMES[c.start_period]
-    const end = PERIOD_TIMES[c.end_period]
-    return {
-      course_id: c.id,
-      name: c.name,
-      teacher: c.teacher,
-      location: c.location,
-      weekday: c.weekday,
-      start_period: c.start_period,
-      end_period: c.end_period,
-      week_range: c.week_range,
-      created_at: c.created_at,
-      time: start && end ? `${start.start}-${end.end}` : `${c.start_period * 2 - 1}:00-${c.end_period * 2}:00`,
-    }
-  })
+  const todayCourses = getCoursesByWeekday(weekday)
 
   const responseData = {
     code: 0,
     message: 'success',
-    data: todayCourses,
+    data: todayCourses.map(course => ({
+      ...course,
+      time: PERIOD_TIMES[course.start_period] && PERIOD_TIMES[course.end_period]
+        ? `${PERIOD_TIMES[course.start_period].start}-${PERIOD_TIMES[course.end_period].end}`
+        : `${course.start_period * 2 - 1}:00-${course.end_period * 2}:00`,
+    })),
   }
 
   logger.api.response('GET', '/courses/today', 200, responseData)
