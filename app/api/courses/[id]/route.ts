@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/logger'
 
+declare global {
+  var dynamicCourses: Array<{
+    course_id: string
+    name: string
+    teacher: string
+    location: string
+    weekday: number
+    start_period: number
+    end_period: number
+    week_range: string
+    created_at: string
+  }>
+}
+
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   const courseId = params.id
   try {
@@ -20,6 +34,22 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     logger.api.processing('更新课程', { courseId, name: body.name })
+
+    if (global.dynamicCourses) {
+      const index = global.dynamicCourses.findIndex(c => c.course_id === courseId)
+      if (index !== -1) {
+        global.dynamicCourses[index] = {
+          ...global.dynamicCourses[index],
+          name: body.name,
+          teacher: body.teacher || '未知',
+          location: body.location || '未知地点',
+          weekday: body.weekday || 1,
+          start_period: body.start_period || 1,
+          end_period: body.end_period || 2,
+          week_range: body.week_range || '1-16',
+        }
+      }
+    }
 
     const updatedCourse = {
       course_id: courseId,
@@ -62,6 +92,10 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
 
     logger.api.processing('删除课程', { courseId })
+
+    if (global.dynamicCourses) {
+      global.dynamicCourses = global.dynamicCourses.filter(c => c.course_id !== courseId)
+    }
 
     const responseData = {
       code: 0,

@@ -2,6 +2,34 @@ import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/logger'
 import { mockCourses } from '@/lib/mock-data'
 
+declare global {
+  var dynamicCourses: Array<{
+    course_id: string
+    name: string
+    teacher: string
+    location: string
+    weekday: number
+    start_period: number
+    end_period: number
+    week_range: string
+    created_at: string
+  }>
+}
+
+if (!global.dynamicCourses) {
+  global.dynamicCourses = mockCourses.map(c => ({
+    course_id: c.id,
+    name: c.name,
+    teacher: c.teacher,
+    location: c.location,
+    weekday: c.weekday,
+    start_period: c.start_period,
+    end_period: c.end_period,
+    week_range: c.week_range,
+    created_at: c.created_at,
+  }))
+}
+
 export async function GET(request: NextRequest) {
   const userId = request.headers.get('X-User-Id')
 
@@ -12,22 +40,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
   }
 
-  logger.api.processing('查询全部课程', { count: mockCourses.length })
+  logger.api.processing('查询全部课程', { count: global.dynamicCourses.length })
 
   const responseData = {
     code: 0,
     message: 'success',
-    data: mockCourses.map(c => ({
-      course_id: c.id,
-      name: c.name,
-      teacher: c.teacher,
-      location: c.location,
-      weekday: c.weekday,
-      start_period: c.start_period,
-      end_period: c.end_period,
-      week_range: c.week_range,
-      created_at: c.created_at,
-    })),
+    data: global.dynamicCourses,
   }
 
   logger.api.response('GET', '/courses', 200, responseData)
@@ -65,6 +83,8 @@ export async function POST(request: NextRequest) {
       week_range: body.week_range || '1-16',
       created_at: new Date().toISOString(),
     }
+
+    global.dynamicCourses.push(newCourse)
 
     const responseData = {
       code: 0,
