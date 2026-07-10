@@ -3,6 +3,7 @@ import { extractDeadlineInfo, extractCourseInfo, extractSubjectKeyword } from '.
 import { prisma, isDbAvailable } from '@/lib/prisma'
 import { generateReviewPlan, type LLMPlanResult, type DailyTaskLLM } from './llm'
 import { generateBoundaryReply } from './boundary'
+import { logger } from '@/lib/logger'
 import type { ToolAction, OrchestrationResult, Deadline } from '@/types'
 
 /**
