@@ -154,6 +154,21 @@ export function Sidebar({ todayCourses, urgentDeadlines, onQuickAction, onDeadli
             </button>
           </div>
         </div>
+
+        <nav className={`mt-4 flex gap-2 transition-all duration-200 ${isCollapsed ? 'opacity-0' : 'opacity-100'}`}>
+          <a
+            href="/"
+            className="flex-1 text-xs py-2 px-3 bg-primary-50 text-primary-600 rounded-lg text-center font-medium"
+          >
+            对话
+          </a>
+          <a
+            href="/courses"
+            className="flex-1 text-xs py-2 px-3 bg-gray-50 text-gray-600 rounded-lg text-center font-medium hover:bg-gray-100 transition-colors"
+          >
+            课程管理
+          </a>
+        </nav>
       </div>
 
       <div className={`flex-1 overflow-y-auto p-4 space-y-6 transition-opacity duration-200 scrollbar-custom ${isCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>

@@ -140,6 +140,14 @@ export const api = {
         throw error
       }
     },
+    all: async (): Promise<ApiResponse<Course[]>> => {
+      try {
+        return await safeFetch<Course[]>(`${BASE_URL}/courses`, { headers })
+      } catch (error) {
+        console.error('[API] courses.all failed:', error)
+        throw error
+      }
+    },
     today: async (): Promise<ApiResponse<Course[]>> => {
       try {
         return await safeFetch<Course[]>(`${BASE_URL}/courses/today`, { headers })
@@ -164,7 +172,7 @@ export const api = {
         throw error
       }
     },
-    create: async (course: Omit<Course, 'id' | 'created_at'>): Promise<ApiResponse<Course>> => {
+    create: async (course: Omit<Course, 'course_id' | 'created_at'>): Promise<ApiResponse<Course>> => {
       try {
         return await safeFetch<Course>(`${BASE_URL}/courses`, {
           method: 'POST',
@@ -173,6 +181,29 @@ export const api = {
         })
       } catch (error) {
         console.error('[API] courses.create failed:', error)
+        throw error
+      }
+    },
+    update: async (id: string, course: Partial<Course>): Promise<ApiResponse<Course>> => {
+      try {
+        return await safeFetch<Course>(`${BASE_URL}/courses/${id}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(course),
+        })
+      } catch (error) {
+        console.error('[API] courses.update failed:', error)
+        throw error
+      }
+    },
+    delete: async (id: string): Promise<ApiResponse<void>> => {
+      try {
+        return await safeFetch<void>(`${BASE_URL}/courses/${id}`, {
+          method: 'DELETE',
+          headers,
+        })
+      } catch (error) {
+        console.error('[API] courses.delete failed:', error)
         throw error
       }
     },
