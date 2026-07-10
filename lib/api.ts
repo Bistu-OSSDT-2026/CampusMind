@@ -1,12 +1,20 @@
 import { Message, Course, Deadline, Plan } from '@/types'
 
 const BASE_URL = '/api'
-const USER_ID = process.env.NEXT_PUBLIC_USER_ID || 'test-user-1'
 
-const headers = {
-  'Content-Type': 'application/json',
-  'X-User-Id': USER_ID,
+/** 获取当前用户ID（优先从 localStorage 读取，支持多账号切换） */
+function getUserId(): string {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('campusmind-user-id') || process.env.NEXT_PUBLIC_USER_ID || 'test-user-1'
+  }
+  return process.env.NEXT_PUBLIC_USER_ID || 'test-user-1'
 }
+
+/** 获取请求头（动态读取当前用户ID） */
+const getHeaders = () => ({
+  'Content-Type': 'application/json',
+  'X-User-Id': getUserId(),
+})
 
 const FETCH_TIMEOUT = 30000
 const MAX_RETRIES = 2
@@ -97,7 +105,7 @@ export const api = {
         const body = { message, session_id: sessionId }
         return await safeFetch<DialogResponse>(`${BASE_URL}/dialog/message`, {
           method: 'POST',
-          headers,
+          headers: getHeaders(),
           body: JSON.stringify(body),
         })
       } catch (error) {
@@ -107,7 +115,7 @@ export const api = {
     },
     history: async (): Promise<ApiResponse<Message[]>> => {
       try {
-        return await safeFetch<Message[]>(`${BASE_URL}/dialog/history`, { headers })
+        return await safeFetch<Message[]>(`${BASE_URL}/dialog/history`, { headers: getHeaders() })
       } catch (error) {
         console.error('[API] dialog.history failed:', error)
         throw error
@@ -115,7 +123,7 @@ export const api = {
     },
     session: async (): Promise<ApiResponse<any>> => {
       try {
-        return await safeFetch(`${BASE_URL}/dialog/session`, { headers })
+        return await safeFetch(`${BASE_URL}/dialog/session`, { headers: getHeaders() })
       } catch (error) {
         console.error('[API] dialog.session failed:', error)
         throw error
@@ -123,7 +131,7 @@ export const api = {
     },
     endSession: async (): Promise<ApiResponse<void>> => {
       try {
-        return await safeFetch<void>(`${BASE_URL}/dialog/session`, { method: 'DELETE', headers })
+        return await safeFetch<void>(`${BASE_URL}/dialog/session`, { method: 'DELETE', headers: getHeaders() })
       } catch (error) {
         console.error('[API] dialog.endSession failed:', error)
         throw error
@@ -134,7 +142,7 @@ export const api = {
   courses: {
     list: async (page = 1, size = 20): Promise<ApiResponse<Course[]>> => {
       try {
-        return await safeFetch<Course[]>(`${BASE_URL}/courses?page=${page}&size=${size}`, { headers })
+        return await safeFetch<Course[]>(`${BASE_URL}/courses?page=${page}&size=${size}`, { headers: getHeaders() })
       } catch (error) {
         console.error('[API] courses.list failed:', error)
         throw error
@@ -142,7 +150,7 @@ export const api = {
     },
     all: async (): Promise<ApiResponse<Course[]>> => {
       try {
-        return await safeFetch<Course[]>(`${BASE_URL}/courses`, { headers })
+        return await safeFetch<Course[]>(`${BASE_URL}/courses`, { headers: getHeaders() })
       } catch (error) {
         console.error('[API] courses.all failed:', error)
         throw error
@@ -150,7 +158,7 @@ export const api = {
     },
     today: async (): Promise<ApiResponse<Course[]>> => {
       try {
-        return await safeFetch<Course[]>(`${BASE_URL}/courses/today`, { headers })
+        return await safeFetch<Course[]>(`${BASE_URL}/courses/today`, { headers: getHeaders() })
       } catch (error) {
         console.error('[API] courses.today failed:', error)
         throw error
@@ -158,7 +166,7 @@ export const api = {
     },
     next: async (): Promise<ApiResponse<Course | null>> => {
       try {
-        return await safeFetch<Course | null>(`${BASE_URL}/courses/next`, { headers })
+        return await safeFetch<Course | null>(`${BASE_URL}/courses/next`, { headers: getHeaders() })
       } catch (error) {
         console.error('[API] courses.next failed:', error)
         throw error
@@ -166,7 +174,7 @@ export const api = {
     },
     availableSlots: async (startDate: string, endDate: string): Promise<ApiResponse<any>> => {
       try {
-        return await safeFetch(`${BASE_URL}/courses/available-slots?start_date=${startDate}&end_date=${endDate}`, { headers })
+        return await safeFetch(`${BASE_URL}/courses/available-slots?start_date=${startDate}&end_date=${endDate}`, { headers: getHeaders() })
       } catch (error) {
         console.error('[API] courses.availableSlots failed:', error)
         throw error
@@ -176,7 +184,7 @@ export const api = {
       try {
         return await safeFetch<Course>(`${BASE_URL}/courses`, {
           method: 'POST',
-          headers,
+          headers: getHeaders(),
           body: JSON.stringify(course),
         })
       } catch (error) {
@@ -188,7 +196,7 @@ export const api = {
       try {
         return await safeFetch<Course>(`${BASE_URL}/courses/${id}`, {
           method: 'PUT',
-          headers,
+          headers: getHeaders(),
           body: JSON.stringify(course),
         })
       } catch (error) {
@@ -200,7 +208,7 @@ export const api = {
       try {
         return await safeFetch<void>(`${BASE_URL}/courses/${id}`, {
           method: 'DELETE',
-          headers,
+          headers: getHeaders(),
         })
       } catch (error) {
         console.error('[API] courses.delete failed:', error)
@@ -212,7 +220,7 @@ export const api = {
   deadlines: {
     list: async (): Promise<ApiResponse<Deadline[]>> => {
       try {
-        return await safeFetch<Deadline[]>(`${BASE_URL}/deadlines`, { headers })
+        return await safeFetch<Deadline[]>(`${BASE_URL}/deadlines`, { headers: getHeaders() })
       } catch (error) {
         console.error('[API] deadlines.list failed:', error)
         throw error
@@ -220,7 +228,7 @@ export const api = {
     },
     urgent: async (): Promise<ApiResponse<Deadline[]>> => {
       try {
-        return await safeFetch<Deadline[]>(`${BASE_URL}/deadlines/urgent`, { headers })
+        return await safeFetch<Deadline[]>(`${BASE_URL}/deadlines/urgent`, { headers: getHeaders() })
       } catch (error) {
         console.error('[API] deadlines.urgent failed:', error)
         throw error
@@ -230,7 +238,7 @@ export const api = {
       try {
         return await safeFetch<Deadline>(`${BASE_URL}/deadlines`, {
           method: 'POST',
-          headers,
+          headers: getHeaders(),
           body: JSON.stringify(deadline),
         })
       } catch (error) {
@@ -242,7 +250,7 @@ export const api = {
       try {
         return await safeFetch<Deadline>(`${BASE_URL}/deadlines/${id}`, {
           method: 'PUT',
-          headers,
+          headers: getHeaders(),
           body: JSON.stringify(deadline),
         })
       } catch (error) {
@@ -254,7 +262,7 @@ export const api = {
       try {
         return await safeFetch<Deadline>(`${BASE_URL}/deadlines/${id}/complete`, {
           method: 'PUT',
-          headers,
+          headers: getHeaders(),
         })
       } catch (error) {
         console.error('[API] deadlines.complete failed:', error)
@@ -265,7 +273,7 @@ export const api = {
       try {
         return await safeFetch<void>(`${BASE_URL}/deadlines/${id}`, {
           method: 'DELETE',
-          headers,
+          headers: getHeaders(),
         })
       } catch (error) {
         console.error('[API] deadlines.delete failed:', error)
@@ -280,7 +288,7 @@ export const api = {
         const body = { ddl_id: ddlId, daily_hours_limit: dailyHoursLimit || 4 }
         return await safeFetch<Plan>(`${BASE_URL}/plans/generate`, {
           method: 'POST',
-          headers,
+          headers: getHeaders(),
           body: JSON.stringify(body),
         })
       } catch (error) {
@@ -290,7 +298,7 @@ export const api = {
     },
     list: async (): Promise<ApiResponse<Plan[]>> => {
       try {
-        return await safeFetch<Plan[]>(`${BASE_URL}/plans`, { headers })
+        return await safeFetch<Plan[]>(`${BASE_URL}/plans`, { headers: getHeaders() })
       } catch (error) {
         console.error('[API] plans.list failed:', error)
         throw error
@@ -298,7 +306,7 @@ export const api = {
     },
     today: async (): Promise<ApiResponse<any>> => {
       try {
-        return await safeFetch(`${BASE_URL}/plans/today`, { headers })
+        return await safeFetch(`${BASE_URL}/plans/today`, { headers: getHeaders() })
       } catch (error) {
         console.error('[API] plans.today failed:', error)
         throw error

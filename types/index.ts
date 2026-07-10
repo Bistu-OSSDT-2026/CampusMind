@@ -64,7 +64,10 @@ export interface AvailableSlot {
 
 export type IntentType =
   | 'course_query'
+  | 'course_create'
+  | 'course_delete'
   | 'deadline_create'
+  | 'deadline_delete'
   | 'plan_generate'
   | 'checkin_feedback'
   | 'review_start'

@@ -4,6 +4,8 @@ import { getRedis, getSessionKey, isRedisAvailable } from '@/lib/redis'
 import { logger } from '@/lib/logger'
 import { detectIntent } from '@/lib/intent'
 import { execute } from '@/lib/orchestrator'
+import { detectIntentWithLLM } from '@/lib/llm'
+import type { IntentType } from '@/types'
 
 export async function POST(request: NextRequest) {
   const userId = request.headers.get('X-User-Id')
@@ -26,11 +28,28 @@ export async function POST(request: NextRequest) {
   const dbOk = await isDbAvailable()
   const redisOk = await isRedisAvailable()
 
-  // 意图识别 + 编排引擎（不依赖数据库，始终可用）
-  const intent = detectIntent(message)
-  logger.api.processing('意图识别结果', { intent })
+  // 意图识别：优先使用 LLM 语义识别，降级到关键词匹配
+  let intent: IntentType
+  let llmParams: Record<string, any> | undefined
 
-  const result = await execute(intent, message, userId)
+  const llmResult = await detectIntentWithLLM(message)
+  if (llmResult) {
+    // 验证 LLM 返回的意图是否合法
+    const validIntents: string[] = ['course_query', 'course_create', 'course_delete', 'deadline_create', 'deadline_delete', 'plan_generate', 'aggregated_query', 'checkin_feedback', 'review_start', 'boundary']
+    if (validIntents.includes(llmResult.intent)) {
+      intent = llmResult.intent as IntentType
+      llmParams = llmResult.params
+      logger.api.processing('LLM 意图识别结果', { intent, llmParams })
+    } else {
+      intent = detectIntent(message)
+      logger.api.processing('LLM 意图不合法，降级到关键词匹配', { llmIntent: llmResult.intent, intent })
+    }
+  } else {
+    intent = detectIntent(message)
+    logger.api.processing('LLM 不可用，使用关键词匹配', { intent })
+  }
+
+  const result = await execute(intent, message, userId, llmParams)
 
   if (!dbOk) {
     // 数据库不可用 → 直接返回编排结果，跳过所有数据库操作

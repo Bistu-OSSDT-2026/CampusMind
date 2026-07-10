@@ -17,12 +17,24 @@ const intentRules: { intent: IntentType; keywords: string[] }[] = [
     keywords: ['设个提醒', '考', '截止', 'ddl', 'DDL', '死线', '到期', '提交', '考试', '测验', '作业截止', '提醒我'],
   },
   {
+    intent: 'course_create',
+    keywords: ['添加课程', '添加课', '加课', '新增课程', '新增课', '加一门课', '加一门', '增加课程', '增加课', '我有一门课', '我有节课', '课表里加', '加入课表', '排课'],
+  },
+  {
+    intent: 'course_delete',
+    keywords: ['删除课程', '删除课', '删课', '去掉课程', '去掉课', '取消课程', '移除课程', '不要这门课'],
+  },
+  {
     intent: 'course_query',
     keywords: ['下节课', '在哪上课', '今天有几节课', '课表', '上课', '课程', '第几节', '几点上课'],
   },
   {
     intent: 'aggregated_query',
     keywords: ['近期任务', '这周有啥', '今天任务', '今日概览', '最近安排', '近期安排', '今天有什么任务', '今天有什么作业'],
+  },
+  {
+    intent: 'deadline_delete',
+    keywords: ['删除死线', '删除提醒', '取消提醒', '取消死线', '删掉提醒', '去掉提醒', '不要这个提醒', '完成死线', '完成提醒', '已完成', '搞定了', '做完了', '写完了', '交完了', '完成了'],
   },
   {
     intent: 'checkin_feedback',
@@ -136,4 +148,79 @@ export function extractDeadlineInfo(message: string): { subject?: string; days?:
   }
 
   return result
+}
+
+/**
+ * 从用户消息中提取课程信息
+ *
+ * 提取策略：
+ * 1. 星期格式："周一"/"周二"等 → 提取 weekday
+ * 2. 节次格式："第1-2节"/"1-2节" → 提取 start_period 和 end_period
+ * 3. 科目关键词匹配：从预设课程列表中匹配课程名称
+ * 4. 通用课程名提取：提取"的xxx"格式中的课程名
+ *
+ * @param message 用户输入消息
+ * @returns 课程信息对象，未提取到的字段为undefined
+ */
+export function extractCourseInfo(message: string): { name?: string; weekday?: number; start_period?: number; end_period?: number; teacher?: string; location?: string } {
+  const result: { name?: string; weekday?: number; start_period?: number; end_period?: number; teacher?: string; location?: string } = {}
+
+  // 提取星期
+  const weekMap: Record<string, number> = {
+    '周一': 1, '星期一': 1,
+    '周二': 2, '星期二': 2,
+    '周三': 3, '星期三': 3,
+    '周四': 4, '星期四': 4,
+    '周五': 5, '星期五': 5,
+    '周六': 6, '星期六': 6,
+    '周日': 7, '星期日': 7, '周天': 7,
+  }
+  const weekMatches = message.match(/(周一|周二|周三|周四|周五|周六|周日|周天|星期一|星期二|星期三|星期四|星期五|星期六|星期日)/)
+  if (weekMatches) {
+    result.weekday = weekMap[weekMatches[1]]
+  }
+
+  // 提取节次："第1-2节" 或 "1-2节"
+  const periodMatches = message.match(/第?(\d+)\s*[-~—]\s*(\d+)\s*节/)
+  if (periodMatches) {
+    result.start_period = parseInt(periodMatches[1])
+    result.end_period = parseInt(periodMatches[2])
+  }
+
+  // 提取科目名称
+  const courseKeywords = ['高等数学', '高数', '大学物理', '物理', '线性代数', '线代', '英语', '大学英语', '计算机', '编程', '数据结构', '算法', '概率论', '概率', '统计学', '化学', '大学化学', '生物', '历史', '地理', '政治', '思政', '毛概', '体育', '军事理论']
+  for (const keyword of courseKeywords) {
+    if (message.includes(keyword)) {
+      result.name = keyword
+      break
+    }
+  }
+
+  // 如果没有匹配到关键词，尝试提取"的xxx课"格式，如"周一的高数课"
+  if (!result.name) {
+    const nameMatch = message.match(/的(.+?)(?:课|$)/)
+    if (nameMatch && nameMatch[1].trim()) {
+      result.name = nameMatch[1].trim()
+    }
+  }
+
+  return result
+}
+
+/**
+ * 从用户消息中提取科目/名称关键词（用于删除操作）
+ *
+ * 匹配逻辑：从预设科目列表中匹配消息中包含的科目名称
+ *
+ * @param message 用户输入消息
+ * @returns 匹配到的科目名称，未匹配到则返回 undefined
+ */
+export function extractSubjectKeyword(message: string): string | undefined {
+  const keywords = ['高等数学', '高数', '大学物理', '物理', '线性代数', '线代', '英语', '大学英语', '计算机', '编程', '数据结构', '算法', '概率论', '概率', '统计学', '化学', '大学化学', '生物', '历史', '地理', '政治', '思政', '毛概', '体育', '军事理论']
+  for (const keyword of keywords) {
+    if (message.includes(keyword)) {
+      return keyword
+    }
+  }
+  return undefined
 }

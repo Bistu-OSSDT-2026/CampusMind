@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/logger'
+import { prisma, isDbAvailable } from '@/lib/prisma'
 import { mockCourses } from '@/lib/mock-data'
 
 const PERIOD_TIMES: Record<number, { start: string; end: string }> = {
@@ -26,55 +27,67 @@ function getWeekdayFromDate(dateStr: string): number {
   return day === 0 ? 7 : day
 }
 
-function getOccupiedPeriods(dateStr: string): Set<number> {
-  const weekday = getWeekdayFromDate(dateStr)
-  const occupied = new Set<number>()
-  
-  mockCourses.forEach(course => {
-    if (course.weekday === weekday) {
-      for (let p = course.start_period; p <= course.end_period; p++) {
-        occupied.add(p)
-      }
-    }
-  })
-  
-  return occupied
-}
-
 export async function GET(request: NextRequest) {
   const userId = request.headers.get('X-User-Id')
-  
+
   logger.api.request('GET', '/api/courses/available-slots', userId)
-  
+
   if (!userId) {
-    logger.api.response('GET', '/api/courses/available-slots', 400, { code: -1, message: '缺少用户ID' })
     return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
   }
-  
+
   const searchParams = request.nextUrl.searchParams
   const startDateStr = searchParams.get('start_date')
   const endDateStr = searchParams.get('end_date')
-  
+
   if (!startDateStr || !endDateStr) {
-    logger.api.response('GET', '/api/courses/available-slots', 400, { code: -1, message: '缺少日期参数' })
     return NextResponse.json({ code: -1, message: '缺少日期参数' }, { status: 400 })
   }
-  
+
   const startDate = new Date(startDateStr)
   const endDate = new Date(endDateStr)
-  
+
   if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-    logger.api.response('GET', '/api/courses/available-slots', 400, { code: -1, message: '日期格式错误' })
     return NextResponse.json({ code: -1, message: '日期格式错误' }, { status: 400 })
   }
-  
+
+  // 从数据库查询用户的课程
+  let dbCourses: { weekday: number; start_period: number; end_period: number }[] = []
+  try {
+    if (await isDbAvailable()) {
+      const courses = await prisma.course.findMany({
+        where: { user_id: userId },
+        select: { weekday: true, start_period: true, end_period: true },
+      })
+      dbCourses = courses
+    }
+  } catch (error) {
+    logger.error('查询课程数据库错误，降级为Mock', error)
+  }
+
+  // 如果数据库无数据则用 Mock
+  const courseList = dbCourses.length > 0 ? dbCourses : mockCourses
+
+  function getOccupiedPeriods(dateStr: string): Set<number> {
+    const weekday = getWeekdayFromDate(dateStr)
+    const occupied = new Set<number>()
+    courseList.forEach(course => {
+      if (course.weekday === weekday) {
+        for (let p = course.start_period; p <= course.end_period; p++) {
+          occupied.add(p)
+        }
+      }
+    })
+    return occupied
+  }
+
   const availableSlots: TimeSlot[] = []
   const currentDate = new Date(startDate)
-  
+
   while (currentDate <= endDate) {
     const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
     const occupiedPeriods = getOccupiedPeriods(dateStr)
-    
+
     for (let period = 1; period <= 8; period++) {
       if (!occupiedPeriods.has(period)) {
         const periodInfo = PERIOD_TIMES[period]
@@ -88,17 +101,9 @@ export async function GET(request: NextRequest) {
         }
       }
     }
-    
+
     currentDate.setDate(currentDate.getDate() + 1)
   }
-  
-  const responseData = {
-    code: 0,
-    message: 'success',
-    data: availableSlots,
-  }
-  
-  logger.api.response('GET', '/api/courses/available-slots', 200, responseData)
-  
-  return NextResponse.json(responseData)
+
+  return NextResponse.json({ code: 0, message: 'success', data: availableSlots })
 }
