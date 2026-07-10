@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/logger'
-import { getTodayWeekday } from '@/lib/mock-data'
-import { getCoursesByWeekday } from '@/lib/course-store'
+import { prisma, isDbAvailable } from '@/lib/prisma'
+import { mockCourses, getTodayWeekday } from '@/lib/mock-data'
 
 const PERIOD_TIMES: Record<number, { start: string; end: string }> = {
   1: { start: '08:00', end: '09:35' },
@@ -14,35 +14,66 @@ const PERIOD_TIMES: Record<number, { start: string; end: string }> = {
   8: { start: '20:50', end: '22:25' },
 }
 
-export function GET(request: NextRequest) {
+export async function GET(request: NextRequest) {
   const userId = request.headers.get('X-User-Id')
 
   logger.api.request('GET', '/courses/today', userId)
 
   if (!userId) {
-    logger.api.response('GET', '/courses/today', 400, { code: -1, message: '缺少用户ID' })
     return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })
   }
 
-  const today = new Date()
   const weekday = getTodayWeekday()
 
-  logger.api.processing('查询今日课程', { today: today.toISOString(), weekday })
+  try {
+    if (await isDbAvailable()) {
+      const courses = await prisma.course.findMany({
+        where: { user_id: userId, weekday },
+        orderBy: { start_period: 'asc' },
+      })
 
-  const todayCourses = getCoursesByWeekday(weekday)
-
-  const responseData = {
-    code: 0,
-    message: 'success',
-    data: todayCourses.map(course => ({
-      ...course,
-      time: PERIOD_TIMES[course.start_period] && PERIOD_TIMES[course.end_period]
-        ? `${PERIOD_TIMES[course.start_period].start}-${PERIOD_TIMES[course.end_period].end}`
-        : `${course.start_period * 2 - 1}:00-${course.end_period * 2}:00`,
-    })),
+      return NextResponse.json({
+        code: 0,
+        message: 'success',
+        data: courses.map(c => {
+          const start = PERIOD_TIMES[c.start_period]
+          const end = PERIOD_TIMES[c.end_period]
+          return {
+            course_id: c.course_id,
+            name: c.name,
+            teacher: c.teacher,
+            location: c.location,
+            weekday: c.weekday,
+            start_period: c.start_period,
+            end_period: c.end_period,
+            week_range: c.week_range,
+            created_at: c.created_at.toISOString(),
+            time: start && end ? `${start.start}-${end.end}` : `${c.start_period * 2 - 1}:00-${c.end_period * 2}:00`,
+          }
+        }),
+      })
+    }
+  } catch (error) {
+    logger.error('查询今日课程数据库错误，降级为Mock', error)
   }
 
-  logger.api.response('GET', '/courses/today', 200, responseData)
+  // Mock 降级
+  const todayCourses = mockCourses.filter(c => c.weekday === weekday).map(c => {
+    const start = PERIOD_TIMES[c.start_period]
+    const end = PERIOD_TIMES[c.end_period]
+    return {
+      course_id: c.id,
+      name: c.name,
+      teacher: c.teacher,
+      location: c.location,
+      weekday: c.weekday,
+      start_period: c.start_period,
+      end_period: c.end_period,
+      week_range: c.week_range,
+      created_at: c.created_at,
+      time: start && end ? `${start.start}-${end.end}` : `${c.start_period * 2 - 1}:00-${c.end_period * 2}:00`,
+    }
+  })
 
-  return NextResponse.json(responseData)
+  return NextResponse.json({ code: 0, message: 'success', data: todayCourses })
 }

@@ -20,6 +20,17 @@ export default function Home() {
   const [inputMessage, setInputMessage] = useState('')
   const chatInputRef = useRef<HTMLTextAreaElement>(null)
 
+  // 多账号切换
+  const [currentUserId, setCurrentUserId] = useState<string>('test-user-1')
+  const [showUserSwitch, setShowUserSwitch] = useState(false)
+  const [newUserId, setNewUserId] = useState('')
+
+  // 初始化：从 localStorage 读取用户ID
+  useEffect(() => {
+    const saved = localStorage.getItem('campusmind-user-id')
+    if (saved) setCurrentUserId(saved)
+  }, [])
+
   const loadSidebarData = useCallback(async () => {
     try {
       const [coursesRes, deadlinesRes] = await Promise.all([
@@ -137,8 +148,60 @@ export default function Home() {
       />
 
       <main className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 lg:hidden">
+        <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between">
           <h1 className="text-lg font-bold text-gray-800">CampusMind</h1>
+          <div className="relative">
+            <button
+              onClick={() => setShowUserSwitch(!showUserSwitch)}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg bg-primary-50 hover:bg-primary-100 text-primary-700 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+              {currentUserId}
+            </button>
+            {showUserSwitch && (
+              <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-100 p-4 z-50">
+                <p className="text-xs text-gray-500 mb-2">切换账号（输入用户ID）</p>
+                <div className="flex gap-2">
+                  <input
+                    value={newUserId}
+                    onChange={(e) => setNewUserId(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newUserId.trim()) {
+                        localStorage.setItem('campusmind-user-id', newUserId.trim())
+                        setCurrentUserId(newUserId.trim())
+                        setNewUserId('')
+                        setShowUserSwitch(false)
+                        setMessages([])
+                        setSessionId(undefined)
+                        loadSidebarData()
+                      }
+                    }}
+                    placeholder="输入用户ID"
+                    className="flex-1 px-3 py-1.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-300"
+                  />
+                  <button
+                    onClick={() => {
+                      if (newUserId.trim()) {
+                        localStorage.setItem('campusmind-user-id', newUserId.trim())
+                        setCurrentUserId(newUserId.trim())
+                        setNewUserId('')
+                        setShowUserSwitch(false)
+                        setMessages([])
+                        setSessionId(undefined)
+                        loadSidebarData()
+                      }
+                    }}
+                    className="px-3 py-1.5 text-sm bg-primary-500 text-white rounded-lg hover:bg-primary-600"
+                  >
+                    切换
+                  </button>
+                </div>
+                <div className="mt-3 text-xs text-gray-400">
+                  当前：{currentUserId}
+                </div>
+              </div>
+            )}
+          </div>
         </header>
 
         <MessageList

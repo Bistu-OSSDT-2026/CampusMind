@@ -163,21 +163,26 @@ function createMinimalFallback(subject: string, daysLeft: number): LLMPlanResult
  * @returns LLM返回的原始字符串，无API Key时返回null
  */
 async function callOpenAI(systemPrompt: string, userPrompt: string): Promise<string | null> {
-  if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === 'your-openai-api-key') {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey || apiKey === 'your-openai-api-key') {
     return null
   }
 
   const { OpenAI } = await import('openai')
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  const openai = new OpenAI({
+    apiKey,
+    baseURL: process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+  })
+
+  const model = process.env.LLM_MODEL || 'gpt-4o-mini'
 
   const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model,
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ],
     temperature: 0.7,
-    response_format: { type: 'json_object' },
   })
 
   return response.choices[0]?.message?.content || null
@@ -332,4 +337,127 @@ export async function analyzeWeakPoints(subject: string, userInput: string): Pro
  */
 export function getMinimalFallback(subject: string, daysLeft: number): LLMPlanResult {
   return createMinimalFallback(subject, daysLeft)
+}
+
+// --- LLM 意图识别 ---
+
+/**
+ * LLM 意图识别的结果
+ */
+export interface LLMIntentResult {
+  intent: string
+  params: Record<string, any>
+}
+
+/**
+ * 意图识别的系统提示词
+ * 定义所有可用功能及其参数
+ */
+const INTENT_SYSTEM_PROMPT = `你是一个学业规划助手的意图识别模块。根据用户消息判断意图并提取参数。
+
+可用功能：
+1. course_query - 查询课程信息（用户想知道有什么课、下节课是什么）
+   参数：weekday(可选，1-7对应周一到周日，不指定则查询今天)
+2. course_create - 添加课程到课表（用户要把一门课排进课表/日程）
+   参数：name(课程名), weekday(1-7), start_period(开始节次), end_period(结束节次)
+   节次对应：上午=1-3节(8:00-13:15), 下午=4-5节(13:30-16:55), 晚上=6-7节(17:10-20:35)
+   用户说"下午有课"→start_period=4,end_period=5; "上午有课"→start_period=1,end_period=2
+3. course_delete - 从课表删除课程
+   参数：name(课程名)
+4. deadline_create - 添加提醒/死线/待办事项（作业、考试、报告、截止日期等）
+   参数：subject(科目/事项), days(几天后截止，默认4), type(exam/homework/other)
+5. deadline_delete - 删除/完成提醒（用户说"完成了"、"搞定了"、"做完了"表示完成某个事项）
+   参数：subject(科目)
+6. plan_generate - 生成复习计划
+   参数：subject(可选，科目名)
+7. aggregated_query - 综合查询今日概览
+   参数：无
+8. checkin_feedback - 打卡/学习反馈
+   参数：无
+9. review_start - 开始复习
+   参数：无
+10. boundary - 与学业无关的闲聊/其他话题
+    参数：无
+
+关键区分规则：
+- "完成作业"、"交报告"、"要考试"、"截止日期" → deadline_create（不是course_create）
+- "我有节xx课"、"排一节课"、"加一门课" → course_create（用户要把课排进课表）
+- "今天有什么课"、"下节课是什么" → course_query（用户只是想查课表）
+- 如果用户说"今天"且语境是添加课程，weekday参数设为今天对应的数字（今天是周五=5）
+
+示例：
+- "今天要完成高数作业" → deadline_create, {"subject":"高数","type":"homework","days":1}
+- "我下周二有物理考试" → deadline_create, {"subject":"物理","type":"exam","days":7}
+- "今天下午我有节高数课" → course_create, {"name":"高数","weekday":5,"start_period":4,"end_period":5}
+- "今天上午有节英语课" → course_create, {"name":"英语","weekday":5,"start_period":1,"end_period":2}
+- "帮我加一门英语课，周一第3-4节" → course_create, {"name":"英语","weekday":1,"start_period":3,"end_period":4}
+- "英语作业已完成" → deadline_delete, {"subject":"英语"}
+- "高数作业搞定了" → deadline_delete, {"subject":"高数"}
+- "今天有什么课" → course_query, {"weekday":5}
+- "下节课是什么" → course_query, {}
+- "帮我生成复习计划" → plan_generate, {}
+
+规则：
+- 只能返回上述10个意图之一
+- 参数缺失时不要编造，省略该参数即可
+- 必须严格按JSON格式返回
+
+输出格式：
+{"intent":"意图名","params":{参数对象}}`
+
+/**
+ * 使用 LLM 识别用户意图并提取参数
+ *
+ * 降级策略：LLM 不可用时返回 null，由调用方使用关键词匹配降级
+ *
+ * @param message 用户输入消息
+ * @returns 意图识别结果，失败时返回 null
+ */
+export async function detectIntentWithLLM(message: string): Promise<LLMIntentResult | null> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey || apiKey === 'your-openai-api-key') {
+    return null
+  }
+
+  try {
+    const { OpenAI } = await import('openai')
+    const openai = new OpenAI({
+      apiKey,
+      baseURL: process.env.LLM_BASE_URL || process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
+    })
+
+    const model = process.env.LLM_MODEL || 'gpt-4o-mini'
+
+    const response = await openai.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: INTENT_SYSTEM_PROMPT },
+        { role: 'user', content: message },
+      ],
+      temperature: 0,
+      // 请求 JSON 输出（兼容不支持 response_format 的模型）
+      ...(model.includes('Qwen') || model.includes('qwen')
+        ? {}
+        : { response_format: { type: 'json_object' } }
+      ),
+    })
+
+    const content = response.choices[0]?.message?.content
+    if (!content) return null
+
+    // 提取 JSON（兼容模型可能输出额外文字）
+    const jsonMatch = content.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) return null
+
+    const parsed = JSON.parse(jsonMatch[0])
+    if (!parsed.intent || typeof parsed.intent !== 'string') return null
+
+    return {
+      intent: parsed.intent,
+      params: typeof parsed.params === 'object' && parsed.params !== null ? parsed.params : {},
+    }
+  } catch (error) {
+    console.error('[LLM] detectIntentWithLLM failed:', error)
+    return null
+  }
 }

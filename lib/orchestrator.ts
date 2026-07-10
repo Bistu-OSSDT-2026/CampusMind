@@ -1,6 +1,6 @@
 import { IntentType } from './intent'
-import { extractDeadlineInfo } from './intent'
-import { prisma } from '@/lib/prisma'
+import { extractDeadlineInfo, extractCourseInfo, extractSubjectKeyword } from './intent'
+import { prisma, isDbAvailable } from '@/lib/prisma'
 import { generateReviewPlan, type LLMPlanResult, type DailyTaskLLM } from './llm'
 import { generateBoundaryReply } from './boundary'
 import type { ToolAction, OrchestrationResult, Deadline } from '@/types'
@@ -60,29 +60,64 @@ function formatCourseTime(startPeriod: number, endPeriod: number): string {
  * @param userId 用户ID
  * @returns 课程列表
  */
-async function getTodayCourses(userId: string) {
+/**
+ * 查询用户指定星期几的课程
+ *
+ * @param userId 用户ID
+ * @param weekday 星期几（1-7，1=周一，7=周日）
+ * @returns 课程列表
+ */
+async function getCoursesByWeekday(userId: string, weekday: number) {
   try {
-    const today = new Date()
-    const weekday = today.getDay() === 0 ? 7 : today.getDay()
-    const courses = await prisma.course.findMany({
-      where: { user_id: userId, weekday },
-      orderBy: { start_period: 'asc' },
-    })
-    return courses
+    if (await isDbAvailable()) {
+      const courses = await prisma.course.findMany({
+        where: { user_id: userId, weekday },
+        orderBy: { start_period: 'asc' },
+      })
+      return courses
+    }
   } catch {
-    const today = new Date()
-    const mockWeekday = today.getDay() === 0 ? 7 : today.getDay()
-    const mockCourses = [
-      { course_id: 'course-math-mon', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: 1, start_period: 1, end_period: 2 },
-      { course_id: 'course-math-wed', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: 3, start_period: 1, end_period: 2 },
-      { course_id: 'course-math-fri', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: 5, start_period: 1, end_period: 2 },
-      { course_id: 'course-phy-tue', name: '大学物理', teacher: '李教授', location: '物理系楼B203', weekday: 2, start_period: 3, end_period: 4 },
-      { course_id: 'course-phy-thu', name: '大学物理', teacher: '李教授', location: '物理系楼B203', weekday: 4, start_period: 3, end_period: 4 },
-      { course_id: 'course-lin-tue', name: '线性代数', teacher: '王教授', location: '数学楼C305', weekday: 2, start_period: 6, end_period: 7 },
-      { course_id: 'course-lin-fri', name: '线性代数', teacher: '王教授', location: '数学楼C305', weekday: 5, start_period: 6, end_period: 7 },
-    ]
-    return mockCourses.filter(c => c.weekday === mockWeekday)
+    // DB 错误，降级为 Mock
   }
+
+  const mockCourses = [
+    { course_id: 'course-math-mon', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: 1, start_period: 1, end_period: 2 },
+    { course_id: 'course-math-wed', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: 3, start_period: 1, end_period: 2 },
+    { course_id: 'course-math-fri', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: 5, start_period: 1, end_period: 2 },
+    { course_id: 'course-phy-tue', name: '大学物理', teacher: '李教授', location: '物理系楼B203', weekday: 2, start_period: 3, end_period: 4 },
+    { course_id: 'course-phy-thu', name: '大学物理', teacher: '李教授', location: '物理系楼B203', weekday: 4, start_period: 3, end_period: 4 },
+    { course_id: 'course-lin-tue', name: '线性代数', teacher: '王教授', location: '数学楼C305', weekday: 2, start_period: 6, end_period: 7 },
+    { course_id: 'course-lin-fri', name: '线性代数', teacher: '王教授', location: '数学楼C305', weekday: 5, start_period: 6, end_period: 7 },
+  ]
+  return mockCourses.filter(c => c.weekday === weekday)
+}
+
+async function getTodayCourses(userId: string) {
+  const today = new Date()
+  const weekday = today.getDay() === 0 ? 7 : today.getDay()
+
+  try {
+    if (await isDbAvailable()) {
+      const courses = await prisma.course.findMany({
+        where: { user_id: userId, weekday },
+        orderBy: { start_period: 'asc' },
+      })
+      return courses
+    }
+  } catch {
+    // DB 错误，降级为 Mock
+  }
+
+  const mockCourses = [
+    { course_id: 'course-math-mon', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: 1, start_period: 1, end_period: 2 },
+    { course_id: 'course-math-wed', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: 3, start_period: 1, end_period: 2 },
+    { course_id: 'course-math-fri', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: 5, start_period: 1, end_period: 2 },
+    { course_id: 'course-phy-tue', name: '大学物理', teacher: '李教授', location: '物理系楼B203', weekday: 2, start_period: 3, end_period: 4 },
+    { course_id: 'course-phy-thu', name: '大学物理', teacher: '李教授', location: '物理系楼B203', weekday: 4, start_period: 3, end_period: 4 },
+    { course_id: 'course-lin-tue', name: '线性代数', teacher: '王教授', location: '数学楼C305', weekday: 2, start_period: 6, end_period: 7 },
+    { course_id: 'course-lin-fri', name: '线性代数', teacher: '王教授', location: '数学楼C305', weekday: 5, start_period: 6, end_period: 7 },
+  ]
+  return mockCourses.filter(c => c.weekday === weekday)
 }
 
 /**
@@ -90,9 +125,10 @@ async function getTodayCourses(userId: string) {
  * 
  * 逻辑：
  * 1. 获取当前日期、星期和时间
- * 2. 查询当天所有课程
- * 3. 遍历课程，找到第一个尚未开始的课程
- * 4. 数据库不可用时返回Mock数据
+ * 2. 查询用户所有课程（按星期和节次排序）
+ * 3. 遍历课程，找到第一个尚未开始的课程（跨天查找）
+ * 4. 本周没课则返回下周第一节课
+ * 5. 数据库不可用时返回Mock数据
  * 
  * @param userId 用户ID
  * @returns 下一节课信息，无则返回null
@@ -100,29 +136,38 @@ async function getTodayCourses(userId: string) {
 async function getNextCourse(userId: string) {
   try {
     const today = new Date()
-    const weekday = today.getDay() === 0 ? 7 : today.getDay()
-    const hour = today.getHours()
-    const minute = today.getMinutes()
+    const currentWeekday = today.getDay() === 0 ? 7 : today.getDay()
+    const currentHour = today.getHours()
+    const currentMinute = today.getMinutes()
 
     const courses = await prisma.course.findMany({
-      where: { user_id: userId, weekday },
-      orderBy: { start_period: 'asc' },
+      where: { user_id: userId },
+      orderBy: [{ weekday: 'asc' }, { start_period: 'asc' }],
     })
 
+    let nextCourse = null
     for (const course of courses) {
       const startTime = periodStartTimes.find(p => p.period === course.start_period)
-      if (startTime) {
-        if (startTime.hour > hour || (startTime.hour === hour && startTime.minute >= minute)) {
-          return course
+      if (!startTime) continue
+      // 本周后续天数的课
+      if (course.weekday > currentWeekday) { nextCourse = course; break }
+      // 今天的课，尚未开始
+      if (course.weekday === currentWeekday) {
+        if (startTime.hour > currentHour || (startTime.hour === currentHour && startTime.minute >= currentMinute)) {
+          nextCourse = course; break
         }
       }
     }
-    return null
+
+    // 本周没课了，返回下周第一节课
+    if (!nextCourse && courses.length > 0) nextCourse = courses[0]
+
+    return nextCourse
   } catch {
     const today = new Date()
-    const weekday = today.getDay() === 0 ? 7 : today.getDay()
-    const hour = today.getHours()
-    const minute = today.getMinutes()
+    const currentWeekday = today.getDay() === 0 ? 7 : today.getDay()
+    const currentHour = today.getHours()
+    const currentMinute = today.getMinutes()
     const allMockCourses = [
       { course_id: 'course-math-mon', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: 1, start_period: 1, end_period: 2 },
       { course_id: 'course-math-wed', name: '高等数学', teacher: '张教授', location: '教学楼A101', weekday: 3, start_period: 1, end_period: 2 },
@@ -132,16 +177,20 @@ async function getNextCourse(userId: string) {
       { course_id: 'course-lin-tue', name: '线性代数', teacher: '王教授', location: '数学楼C305', weekday: 2, start_period: 6, end_period: 7 },
       { course_id: 'course-lin-fri', name: '线性代数', teacher: '王教授', location: '数学楼C305', weekday: 5, start_period: 6, end_period: 7 },
     ]
-    const mockCourses = allMockCourses.filter(c => c.weekday === weekday)
-    for (const course of mockCourses) {
+    const sortedMock = [...allMockCourses].sort((a, b) => a.weekday !== b.weekday ? a.weekday - b.weekday : a.start_period - b.start_period)
+    let nextCourse = null
+    for (const course of sortedMock) {
       const startTime = periodStartTimes.find(p => p.period === course.start_period)
-      if (startTime) {
-        if (startTime.hour > hour || (startTime.hour === hour && startTime.minute >= minute)) {
-          return course
+      if (!startTime) continue
+      if (course.weekday > currentWeekday) { nextCourse = course; break }
+      if (course.weekday === currentWeekday) {
+        if (startTime.hour > currentHour || (startTime.hour === currentHour && startTime.minute >= currentMinute)) {
+          nextCourse = course; break
         }
       }
     }
-    return null
+    if (!nextCourse && sortedMock.length > 0) nextCourse = sortedMock[0]
+    return nextCourse
   }
 }
 
@@ -330,41 +379,124 @@ async function generatePlan(userId: string, ddlId: string, dailyHoursLimit: numb
 // --- 编排引擎主入口 ---
 
 /**
+ * 从用户消息中解析目标星期几
+ * 支持：周一~周日、星期一~星期日、今天/明天/后天/大后天
+ *
+ * @param message 用户输入消息
+ * @returns 星期几（1-7），未匹配到返回 undefined
+ */
+function parseWeekdayFromMessage(message: string): number | undefined {
+  const currentWeekday = new Date().getDay() === 0 ? 7 : new Date().getDay()
+
+  const absoluteMap: Record<string, number> = {
+    '周一': 1, '星期一': 1,
+    '周二': 2, '星期二': 2,
+    '周三': 3, '星期三': 3,
+    '周四': 4, '星期四': 4,
+    '周五': 5, '星期五': 5,
+    '周六': 6, '星期六': 6,
+    '周日': 7, '星期日': 7, '周天': 7,
+  }
+
+  // 先匹配绝对星期
+  for (const [key, value] of Object.entries(absoluteMap)) {
+    if (message.includes(key)) {
+      return value
+    }
+  }
+
+  // 再匹配相对日期
+  const relativeMap: Record<string, number> = {
+    '今天': 0,
+    '明天': 1,
+    '后天': 2,
+    '大后天': 3,
+  }
+  for (const [key, offset] of Object.entries(relativeMap)) {
+    if (message.includes(key)) {
+      let target = currentWeekday + offset
+      while (target > 7) target -= 7
+      return target
+    }
+  }
+
+  return undefined
+}
+
+/**
  * 编排引擎核心函数
  * 根据用户意图执行对应的工具链并返回结果
- * 
+ *
  * 意图处理流程：
- * 1. course_query: 查询下节课 + 今日课程
+ * 1. course_query: 查询下节课 + 今日课程（支持指定星期查询）
  * 2. deadline_create: 解析日期和科目 → 创建死线
  * 3. plan_generate: 查询死线 → 查询可用时段 → 生成计划（串联执行）
  * 4. aggregated_query: 查询今日课程 + 紧迫死线（并行执行）
  * 5. checkin_feedback: 查询死线状态 → 返回打卡反馈
  * 6. review_start: 查询死线 → 返回复习建议
  * 7. boundary: 查询死线 → 生成边界回复
- * 
+ *
  * @param intent 用户意图类型
  * @param message 用户输入消息
  * @param userId 用户ID
  * @returns 编排结果，包含回复内容、意图、工具调用记录
  */
-export async function execute(intent: IntentType, message: string, userId: string): Promise<OrchestrationResult> {
+export async function execute(intent: IntentType, message: string, userId: string, llmParams?: Record<string, any>): Promise<OrchestrationResult> {
   const actions: ToolAction[] = []
 
   switch (intent) {
     case 'course_query': {
+      // 优先使用 LLM 提取的参数，否则从消息中解析
+      const targetWeekday = llmParams?.weekday ?? parseWeekdayFromMessage(message)
+
+      if (targetWeekday !== undefined) {
+        // 查询指定天的课程
+        const dayCourses = await getCoursesByWeekday(userId, targetWeekday)
+        actions.push({ tool: 'course', action: 'query', result: `查询${weekdayLabels[targetWeekday]}课程` })
+
+        if (dayCourses.length === 0) {
+          return {
+            reply: `${weekdayLabels[targetWeekday]}没有课程安排。`,
+            intent,
+            actions,
+          }
+        }
+
+        const courseList = dayCourses.map(c => `【${c.name}】${c.location} ${formatCourseTime(c.start_period, c.end_period)}`).join('\n• ')
+        return {
+          reply: `${weekdayLabels[targetWeekday]}有以下课程：\n• ${courseList}`,
+          intent,
+          actions,
+        }
+      }
+
+      // 默认行为：查询今天的课程 + 下一节课
       const [nextCourse, todayCourses] = await Promise.all([
         getNextCourse(userId),
         getTodayCourses(userId),
       ])
 
-      actions.push({ tool: 'course', action: 'query', result: '查询今日课程' })
+      actions.push({ tool: 'course', action: 'query', result: '查询课程' })
+
+      const currentWeekday = new Date().getDay() === 0 ? 7 : new Date().getDay()
 
       if (nextCourse) {
         const time = formatCourseTime(nextCourse.start_period, nextCourse.end_period)
-        const todayCourseList = todayCourses.map(c => `${c.name} - ${c.location} - ${formatCourseTime(c.start_period, c.end_period)}`).join('\n• ')
+        const isToday = nextCourse.weekday === currentWeekday
 
+        if (isToday) {
+          const todayCourseList = todayCourses.map(c => `${c.name} - ${c.location} - ${formatCourseTime(c.start_period, c.end_period)}`).join('\n• ')
+          return {
+            reply: `下节课是【${nextCourse.name}】，在${nextCourse.location}，${time}上课。\n\n今天还有以下课程：\n• ${todayCourseList}`,
+            intent,
+            actions: [...actions, { tool: 'course', action: 'query', result: '查询下节课' }],
+          }
+        }
+
+        // 下节课不在今天
+        const dayLabel = weekdayLabels[nextCourse.weekday]
         return {
-          reply: `下节课是【${nextCourse.name}】，在${nextCourse.location}，${time}上课。\n\n今天还有以下课程：\n• ${todayCourseList}`,
+          reply: `今天没有更多课程了。下一节课是${dayLabel}的【${nextCourse.name}】，在${nextCourse.location}，${time}上课。`,
           intent,
           actions: [...actions, { tool: 'course', action: 'query', result: '查询下节课' }],
         }
@@ -373,27 +505,225 @@ export async function execute(intent: IntentType, message: string, userId: strin
       if (todayCourses.length > 0) {
         const todayCourseList = todayCourses.map(c => `${c.name} - ${c.location} - ${formatCourseTime(c.start_period, c.end_period)}`).join('\n• ')
         return {
-          reply: `今天已经没有下一节课了，但今天有以下课程：\n• ${todayCourseList}`,
+          reply: `今天的课程已经结束了，今天共有以下课程：\n• ${todayCourseList}`,
           intent,
           actions,
         }
       }
 
-      return { reply: '今天没有课程安排，好好休息吧！', intent, actions }
+      return { reply: '目前没有任何课程安排。你可以在「课程管理」页面添加课程。', intent, actions }
+    }
+
+    case 'course_create': {
+      // 优先使用 LLM 提取的参数，否则从消息中解析
+      const extractedInfo = extractCourseInfo(message)
+      const courseName = llmParams?.name || extractedInfo.name
+      const weekday = llmParams?.weekday || extractedInfo.weekday || 1
+      const startPeriod = llmParams?.start_period || extractedInfo.start_period || 1
+      const endPeriod = llmParams?.end_period || extractedInfo.end_period || startPeriod + 1
+
+      if (!courseName) {
+        return {
+          reply: '请告诉我课程名称，例如「添加课程 高等数学 周一第1-2节」。',
+          intent,
+          actions,
+        }
+      }
+
+      try {
+        if (await isDbAvailable()) {
+          // 确保用户存在
+          try {
+            await prisma.user.upsert({
+              where: { user_id: userId },
+              update: {},
+              create: { user_id: userId, nickname: userId },
+            })
+          } catch {
+            // 用户可能已存在
+          }
+
+          const newCourse = await prisma.course.create({
+            data: {
+              user_id: userId,
+              name: courseName,
+              teacher: llmParams?.teacher || extractedInfo.teacher || '未知',
+              location: llmParams?.location || extractedInfo.location || '未知地点',
+              weekday,
+              start_period: startPeriod,
+              end_period: endPeriod,
+              week_range: '1-16',
+            },
+          })
+
+          actions.push({ tool: 'course', action: 'create', result: `创建课程${courseName}` })
+
+          return {
+            reply: `已添加课程【${courseName}】，${weekdayLabels[weekday]} 第${startPeriod}-${endPeriod}节。\n\n你可以在「课程管理」页面查看和编辑课程。`,
+            intent,
+            actions,
+          }
+        }
+      } catch {
+        // DB 错误，降级为确认回复
+      }
+
+      actions.push({ tool: 'course', action: 'create', result: `创建课程${courseName}（未持久化）` })
+
+      return {
+        reply: `已记录课程【${courseName}】，${weekdayLabels[weekday]} 第${startPeriod}-${endPeriod}节。\n\n⚠️ 数据库暂时不可用，课程数据未保存。请在数据库恢复后重新添加。`,
+        intent,
+        actions,
+      }
+    }
+
+    case 'course_delete': {
+      // 优先使用 LLM 提取的参数，否则从消息中解析
+      const subject = llmParams?.name || extractSubjectKeyword(message)
+
+      if (!subject) {
+        return {
+          reply: '请告诉我想删除哪门课，例如「删除课程 高等数学」。',
+          intent,
+          actions,
+        }
+      }
+
+      try {
+        if (await isDbAvailable()) {
+          // 查找匹配的课程
+          const courses = await prisma.course.findMany({
+            where: { user_id: userId, name: { contains: subject } },
+          })
+
+          if (courses.length === 0) {
+            return {
+              reply: `没有找到包含「${subject}」的课程。你可以说「课表」查看已有课程。`,
+              intent,
+              actions,
+            }
+          }
+
+          if (courses.length === 1) {
+            await prisma.course.delete({ where: { course_id: courses[0].course_id } })
+            actions.push({ tool: 'course', action: 'delete', result: `删除课程${courses[0].name}` })
+            return {
+              reply: `已删除课程【${courses[0].name}】（${weekdayLabels[courses[0].weekday]} 第${courses[0].start_period}-${courses[0].end_period}节）。`,
+              intent,
+              actions,
+            }
+          }
+
+          // 多门课匹配，删除所有匹配的
+          const deletedNames: string[] = []
+          for (const course of courses) {
+            await prisma.course.delete({ where: { course_id: course.course_id } })
+            deletedNames.push(`${course.name}（${weekdayLabels[course.weekday]} 第${course.start_period}-${course.end_period}节）`)
+          }
+          actions.push({ tool: 'course', action: 'delete', result: `删除${courses.length}门${subject}课程` })
+          return {
+            reply: `已删除 ${courses.length} 门匹配「${subject}」的课程：\n${deletedNames.map(n => `• ${n}`).join('\n')}`,
+            intent,
+            actions,
+          }
+        }
+      } catch (error) {
+        // DB 错误
+      }
+
+      return {
+        reply: `⚠️ 数据库暂时不可用，无法删除课程。请在数据库恢复后重试。`,
+        intent,
+        actions,
+      }
     }
 
     case 'deadline_create': {
+      // 优先使用 LLM 提取的参数，否则从消息中解析
       const info = extractDeadlineInfo(message)
-      const subject = info.subject || message
+      const subject = llmParams?.subject || info.subject || message
       const today = new Date()
-      const daysOffset = info.days || 4
+      const daysOffset = llmParams?.days || info.days || 4
       const deadlineTime = new Date(today.getTime() + daysOffset * 86400000)
 
-      const deadline = await createDeadline(userId, 'exam', subject, deadlineTime, 5)
-      actions.push({ tool: 'deadline', action: 'create', result: `创建${subject}考试死线` })
+      // 优先使用 LLM 判断的类型，否则从消息内容判断
+      let ddlType: 'exam' | 'homework' | 'other' = llmParams?.type || 'other'
+      if (!llmParams?.type) {
+        if (/考试|测验|期中|期末|测试|考[^试]|[^考]考$/.test(message)) ddlType = 'exam'
+        else if (/作业|报告|论文|实验|提交|截止/.test(message)) ddlType = 'homework'
+      }
+      const typeLabel: Record<string, string> = { exam: '考试', homework: '作业', other: '事项' }
+
+      const deadline = await createDeadline(userId, ddlType, subject, deadlineTime, ddlType === 'exam' ? 5 : 3)
+      actions.push({ tool: 'deadline', action: 'create', result: `创建${subject}${typeLabel[ddlType]}死线` })
 
       return {
-        reply: `已记录：${subject}考试，预计${daysOffset}天后进行。\n\n你可以说「帮我生成复习计划」来创建复习安排。`,
+        reply: `已记录：${subject}${typeLabel[ddlType]}，预计${daysOffset}天后截止。\n\n你可以说「帮我生成复习计划」来创建复习安排。`,
+        intent,
+        actions,
+      }
+    }
+
+    case 'deadline_delete': {
+      // 优先使用 LLM 提取的参数，否则从消息中解析
+      const subject = llmParams?.subject || extractSubjectKeyword(message)
+
+      if (!subject) {
+        return {
+          reply: '请告诉我想删除哪个提醒，例如「删除提醒 高数」。',
+          intent,
+          actions,
+        }
+      }
+
+      try {
+        if (await isDbAvailable()) {
+          // 查找匹配的死线
+          const deadlines = await prisma.deadline.findMany({
+            where: { user_id: userId, subject: { contains: subject }, status: 'pending' },
+          })
+
+          if (deadlines.length === 0) {
+            return {
+              reply: `没有找到包含「${subject}」的待办提醒。你可以说「今天有什么任务」查看已有提醒。`,
+              intent,
+              actions,
+            }
+          }
+
+          if (deadlines.length === 1) {
+            await prisma.deadline.update({
+              where: { ddl_id: deadlines[0].ddl_id },
+              data: { status: 'completed' },
+            })
+            actions.push({ tool: 'deadline', action: 'delete', result: `完成提醒${deadlines[0].subject}` })
+            return {
+              reply: `已完成提醒【${deadlines[0].subject}】。`,
+              intent,
+              actions,
+            }
+          }
+
+          // 多个匹配，标记全部完成
+          for (const ddl of deadlines) {
+            await prisma.deadline.update({
+              where: { ddl_id: ddl.ddl_id },
+              data: { status: 'completed' },
+            })
+          }
+          actions.push({ tool: 'deadline', action: 'delete', result: `完成${deadlines.length}个${subject}提醒` })
+          return {
+            reply: `已完成 ${deadlines.length} 个匹配「${subject}」的提醒。`,
+            intent,
+            actions,
+          }
+        }
+      } catch {
+        // DB 错误
+      }
+
+      return {
+        reply: `⚠️ 数据库暂时不可用，无法删除提醒。请在数据库恢复后重试。`,
         intent,
         actions,
       }
