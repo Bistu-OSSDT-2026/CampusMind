@@ -14,7 +14,7 @@ const intentRules: { intent: IntentType; keywords: string[] }[] = [
   },
   {
     intent: 'deadline_create',
-    keywords: ['设个提醒', '考', '作业', '截止', 'ddl', 'DDL', '死线', '到期', '提交', '考试', '测验', '作业截止'],
+    keywords: ['设个提醒', '考', '截止', 'ddl', 'DDL', '死线', '到期', '提交', '考试', '测验', '作业截止', '提醒我'],
   },
   {
     intent: 'course_query',
@@ -22,7 +22,7 @@ const intentRules: { intent: IntentType; keywords: string[] }[] = [
   },
   {
     intent: 'aggregated_query',
-    keywords: ['近期任务', '这周有啥', '今天任务', '今日概览', '最近安排', '近期安排', '今天有什么任务'],
+    keywords: ['近期任务', '这周有啥', '今天任务', '今日概览', '最近安排', '近期安排', '今天有什么任务', '今天有什么作业'],
   },
   {
     intent: 'checkin_feedback',

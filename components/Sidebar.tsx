@@ -67,8 +67,8 @@ const getWeekNumber = (date: Date): number => {
 const quickActions = [
   { text: '下节课是什么？', icon: '📅' },
   { text: '帮我生成复习计划', icon: '📋' },
-  { text: '周五考高数', icon: '⏰' },
-  { text: '今天有什么作业？', icon: '✏️' },
+  { text: '今天有什么任务？', icon: '📝' },
+  { text: '开始复习', icon: '🎯' },
 ]
 
 export function Sidebar({ todayCourses, urgentDeadlines, onQuickAction, onDeadlineComplete, onDeadlineExtend }: SidebarProps) {
