@@ -6,6 +6,7 @@ import { Course } from '@/types'
 interface CourseFormProps {
   initialData?: Course | null
   onSubmit: (data: Omit<Course, 'course_id' | 'created_at'>) => void
+  onSaveAndBack?: (data: Omit<Course, 'course_id' | 'created_at'>) => void
   onCancel: () => void
 }
 
@@ -24,7 +25,7 @@ const periods = Array.from({ length: 12 }, (_, i) => ({
   label: `第${i + 1}节`,
 }))
 
-export function CourseForm({ initialData, onSubmit, onCancel }: CourseFormProps) {
+export function CourseForm({ initialData, onSubmit, onSaveAndBack, onCancel }: CourseFormProps) {
   const [formData, setFormData] = useState({
     name: '',
     teacher: '',
@@ -53,7 +54,7 @@ export function CourseForm({ initialData, onSubmit, onCancel }: CourseFormProps)
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent, saveAndBack = false) => {
     e.preventDefault()
     if (!formData.name.trim()) {
       alert('课程名称不能为空')
@@ -63,7 +64,11 @@ export function CourseForm({ initialData, onSubmit, onCancel }: CourseFormProps)
       alert('结束节次要大于开始节次')
       return
     }
-    onSubmit(formData)
+    if (saveAndBack && onSaveAndBack) {
+      onSaveAndBack(formData)
+    } else {
+      onSubmit(formData)
+    }
   }
 
   return (
@@ -166,9 +171,19 @@ export function CourseForm({ initialData, onSubmit, onCancel }: CourseFormProps)
         </button>
         <button
           type="submit"
-          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          className="px-4 py-2 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 transition-colors"
         >
           {initialData ? '保存修改' : '添加课程'}
+        </button>
+        <button
+          type="button"
+          onClick={(e) => handleSubmit(e, true)}
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+          </svg>
+          保存并返回
         </button>
       </div>
     </form>

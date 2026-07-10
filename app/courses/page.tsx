@@ -138,6 +138,17 @@ export default function CoursesPage() {
             <CourseForm
               initialData={editingCourse}
               onSubmit={editingCourse ? (data) => handleEditCourse(editingCourse.course_id, data) : handleAddCourse}
+              onSaveAndBack={(data) => {
+                if (editingCourse) {
+                  handleEditCourse(editingCourse.course_id, data).then(() => {
+                    window.location.href = '/'
+                  })
+                } else {
+                  handleAddCourse(data).then(() => {
+                    window.location.href = '/'
+                  })
+                }
+              }}
               onCancel={() => {
                 setShowForm(false)
                 setEditingCourse(null)
