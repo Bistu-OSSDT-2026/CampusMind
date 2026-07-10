@@ -263,9 +263,8 @@ async function getAvailableSlots(userId: string) {
 async function getUrgentDeadlines(userId: string): Promise<Deadline[]> {
   try {
     const now = new Date()
-    const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
     const deadlines = await prisma.deadline.findMany({
-      where: { user_id: userId, status: 'pending', deadline_time: { gte: now, lte: sevenDaysLater } },
+      where: { user_id: userId, status: 'pending', deadline_time: { gte: now } },
       orderBy: { deadline_time: 'asc' },
     })
     return deadlines.map(d => ({
@@ -303,13 +302,25 @@ async function getUrgentDeadlines(userId: string): Promise<Deadline[]> {
  */
 async function createDeadline(userId: string, type: string, subject: string, deadlineTime: Date, weight: number = 3) {
   try {
-    const deadline = await prisma.deadline.create({
-      data: { user_id: userId, type, subject, deadline_time: deadlineTime, weight },
-    })
-    return deadline
-  } catch {
-    return { ddl_id: `ddl-${Date.now()}`, type, subject, deadline_time: deadlineTime, weight, status: 'pending' }
+    if (await isDbAvailable()) {
+      // 确保用户存在
+      try {
+        await prisma.user.upsert({
+          where: { user_id: userId },
+          update: {},
+          create: { user_id: userId, username: userId, nickname: userId },
+        })
+      } catch { /* 用户已存在 */ }
+
+      const deadline = await prisma.deadline.create({
+        data: { user_id: userId, type, subject, deadline_time: deadlineTime, weight },
+      })
+      return deadline
+    }
+  } catch (error) {
+    logger.error('创建死线数据库错误', error)
   }
+  return { ddl_id: `ddl-${Date.now()}`, type, subject, deadline_time: deadlineTime, weight, status: 'pending' }
 }
 
 // --- Tool C: 计划生成模块（调用LLM） ---
@@ -537,7 +548,7 @@ export async function execute(intent: IntentType, message: string, userId: strin
             await prisma.user.upsert({
               where: { user_id: userId },
               update: {},
-              create: { user_id: userId, nickname: userId },
+              create: { user_id: userId, username: userId, nickname: userId },
             })
           } catch {
             // 用户可能已存在

@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
         await prisma.user.upsert({
           where: { user_id: userId },
           update: {},
-          create: { user_id: userId, nickname: userId },
+          create: { user_id: userId, username: userId, nickname: userId },
         })
       } catch {
         // 用户可能已存在
