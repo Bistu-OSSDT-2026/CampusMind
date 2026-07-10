@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Course, Deadline } from '@/types'
+import { api } from '@/lib/api'
 
 interface SidebarProps {
   todayCourses: Course[]
@@ -57,12 +58,7 @@ const formatPeriod = (startPeriod: number, endPeriod: number) => {
   return `${start}-${endTime}`
 }
 
-const getWeekNumber = (date: Date): number => {
-  const startOfYear = new Date(date.getFullYear(), 0, 1)
-  const diff = date.getTime() - startOfYear.getTime()
-  const oneWeek = 1000 * 60 * 60 * 24 * 7
-  return Math.ceil(diff / oneWeek)
-}
+
 
 const quickActions = [
   { text: '下节课是什么？', icon: '📅' },
@@ -71,16 +67,48 @@ const quickActions = [
   { text: '开始复习', icon: '🎯' },
 ]
 
+function calculateWeekNumber(date: Date, firstWeekStartDate: string): number {
+  const firstWeekStart = new Date(firstWeekStartDate)
+  firstWeekStart.setHours(0, 0, 0, 0)
+  
+  const currentDate = new Date(date)
+  currentDate.setHours(0, 0, 0, 0)
+  
+  const diff = currentDate.getTime() - firstWeekStart.getTime()
+  const oneWeek = 1000 * 60 * 60 * 24 * 7
+  
+  if (diff < 0) {
+    return 0
+  }
+  
+  return Math.floor(diff / oneWeek) + 1
+}
+
 export function Sidebar({ todayCourses, urgentDeadlines, onQuickAction, onDeadlineComplete, onDeadlineExtend }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [width, setWidth] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [expandedDeadline, setExpandedDeadline] = useState<string | null>(null)
   const [hoveredProgress, setHoveredProgress] = useState<string | null>(null)
+  const [firstWeekStartDate, setFirstWeekStartDate] = useState('2026-02-23')
   const sidebarRef = useRef<HTMLDivElement>(null)
   const minWidth = 60
   const maxWidth = 340
   const expandedWidth = 320
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const response = await api.settings.get()
+        if (response.code === 0 && response.data.firstWeekStartDate) {
+          setFirstWeekStartDate(response.data.firstWeekStartDate)
+        }
+      } catch {
+        console.error('Failed to load settings')
+      }
+    }
+    loadSettings()
+  }, [])
 
   useEffect(() => {
     setWidth(isCollapsed ? minWidth : expandedWidth)
@@ -121,7 +149,7 @@ export function Sidebar({ todayCourses, urgentDeadlines, onQuickAction, onDeadli
   }, [])
 
   const today = new Date()
-  const weekNumber = getWeekNumber(today)
+  const weekNumber = calculateWeekNumber(today, firstWeekStartDate)
   const todayStr = `${today.getMonth() + 1}月${today.getDate()}日 周${weekdayMap[today.getDay()]}`
 
   const completedCount = urgentDeadlines.filter(d => d.status === 'completed').length
@@ -166,6 +194,16 @@ export function Sidebar({ todayCourses, urgentDeadlines, onQuickAction, onDeadli
             className="flex-1 text-xs py-2 px-3 bg-gray-50 text-gray-600 rounded-lg text-center font-medium hover:bg-gray-100 transition-colors"
           >
             课程管理
+          </a>
+          <a
+            href="/settings"
+            className="flex items-center justify-center w-8 h-8 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+            title="设置"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
           </a>
         </nav>
       </div>

@@ -305,4 +305,27 @@ export const api = {
       }
     },
   },
+
+  settings: {
+    get: async (): Promise<ApiResponse<{ firstWeekStartDate: string }>> => {
+      try {
+        return await safeFetch(`${BASE_URL}/settings`, { headers })
+      } catch (error) {
+        console.error('[API] settings.get failed:', error)
+        throw error
+      }
+    },
+    update: async (settings: { firstWeekStartDate: string }): Promise<ApiResponse<{ firstWeekStartDate: string }>> => {
+      try {
+        return await safeFetch(`${BASE_URL}/settings`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(settings),
+        })
+      } catch (error) {
+        console.error('[API] settings.update failed:', error)
+        throw error
+      }
+    },
+  },
 }

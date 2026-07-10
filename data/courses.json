@@ -15,10 +15,10 @@
     "name": "大学物理",
     "teacher": "李教授",
     "location": "物理系楼B203",
-    "weekday": 4,
+    "weekday": 5,
     "start_period": 3,
     "end_period": 4,
-    "week_range": "1-16",
+    "week_range": "1-163",
     "created_at": "2026-07-01T08:00:00Z"
   },
   {
@@ -42,16 +42,5 @@
     "end_period": 7,
     "week_range": "1-16",
     "created_at": "2026-07-01T08:00:00Z"
-  },
-  {
-    "name": "wfd w",
-    "teacher": "w ",
-    "location": " q ",
-    "weekday": 5,
-    "start_period": 9,
-    "end_period": 12,
-    "week_range": "28",
-    "created_at": "2026-07-10T04:02:46.990Z",
-    "course_id": "course-1783656166990"
   }
 ]
