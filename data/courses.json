@@ -1,0 +1,46 @@
+[
+  {
+    "course_id": "course-phy-tue",
+    "name": "大学物理",
+    "teacher": "李教授",
+    "location": "物理系楼B203",
+    "weekday": 2,
+    "start_period": 3,
+    "end_period": 4,
+    "week_range": "1-16",
+    "created_at": "2026-07-01T08:00:00Z"
+  },
+  {
+    "course_id": "course-phy-thu",
+    "name": "大学物理",
+    "teacher": "李教授",
+    "location": "物理系楼B203",
+    "weekday": 5,
+    "start_period": 3,
+    "end_period": 4,
+    "week_range": "1-163",
+    "created_at": "2026-07-01T08:00:00Z"
+  },
+  {
+    "course_id": "course-lin-tue",
+    "name": "线性代数",
+    "teacher": "王教授",
+    "location": "数学楼C305",
+    "weekday": 2,
+    "start_period": 6,
+    "end_period": 7,
+    "week_range": "1-16",
+    "created_at": "2026-07-01T08:00:00Z"
+  },
+  {
+    "course_id": "course-lin-fri",
+    "name": "线性代数",
+    "teacher": "王教授",
+    "location": "数学楼C305",
+    "weekday": 5,
+    "start_period": 6,
+    "end_period": 7,
+    "week_range": "1-16",
+    "created_at": "2026-07-01T08:00:00Z"
+  }
+]

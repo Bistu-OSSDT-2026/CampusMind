@@ -34,7 +34,7 @@ function formatCourse(c: { course_id: string; name: string; teacher: string | nu
 export async function GET(request: NextRequest) {
   const userId = request.headers.get('X-User-Id')
 
-  logger.api.request('GET', '/api/courses/next', userId)
+  logger.api.request('GET', '/courses/next', userId)
 
   if (!userId) {
     return NextResponse.json({ code: -1, message: '缺少用户ID' }, { status: 400 })

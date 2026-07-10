@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { usePathname } from 'next/navigation'
 import { Message, Course, Deadline, ToolAction } from '@/types'
 import { api } from '@/lib/api'
 import { Sidebar } from '@/components/Sidebar'
@@ -8,6 +9,7 @@ import { MessageList } from '@/components/MessageList'
 import { ChatInput } from '@/components/ChatInput'
 
 export default function Home() {
+  const pathname = usePathname()
   const [messages, setMessages] = useState<Message[]>([])
   const [sessionId, setSessionId] = useState<string | undefined>()
   const [isLoading, setIsLoading] = useState(false)
@@ -48,7 +50,7 @@ export default function Home() {
 
   useEffect(() => {
     loadSidebarData()
-  }, [loadSidebarData])
+  }, [loadSidebarData, pathname])
 
   const handleSend = async (content: string) => {
     const userMessage: Message = {

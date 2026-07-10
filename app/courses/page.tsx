@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Course } from '@/types'
 import { api } from '@/lib/api'
 import { CourseForm } from '@/components/CourseForm'
 
 export default function CoursesPage() {
+  const router = useRouter()
   const [courses, setCourses] = useState<Course[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -141,11 +143,11 @@ export default function CoursesPage() {
               onSaveAndBack={(data) => {
                 if (editingCourse) {
                   handleEditCourse(editingCourse.course_id, data).then(() => {
-                    window.location.href = '/'
+                    router.push('/')
                   })
                 } else {
                   handleAddCourse(data).then(() => {
-                    window.location.href = '/'
+                    router.push('/')
                   })
                 }
               }}

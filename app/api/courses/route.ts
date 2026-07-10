@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logger } from '@/lib/logger'
-import { prisma } from '@/lib/prisma'
-import { isDbAvailable } from '@/lib/prisma'
+import { prisma, isDbAvailable } from '@/lib/prisma'
 import { mockCourses } from '@/lib/mock-data'
 
 export async function GET(request: NextRequest) {
